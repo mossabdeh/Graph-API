@@ -93,4 +93,8 @@ public class Edge implements Comparable<Edge>{
     @Override
     public int hashCode() {
         return Objects.hash(from, to, weight);}
+
+    public Node getTo() {
+        return to;
+    }
 }
