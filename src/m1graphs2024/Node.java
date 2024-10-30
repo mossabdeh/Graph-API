@@ -9,7 +9,7 @@ public class Node implements Comparable<Node> {
     private  Graph graphHolder;
 
 
-    public Node(int id){this.id =  id;}
+
     /*  Constructor takes both the id  and the graph holder as parameters */
     public Node(int id, Graph graphHolder) {
         this.id = id;
@@ -27,6 +27,9 @@ public class Node implements Comparable<Node> {
     /* getter for id For better encapsulation */
     public int getId() {
         return id; }
+
+    public Graph getGraphHolder() {
+        return graphHolder; }
 
     /* Implementation of Comparable Interface to compare Nodes */
     @Override
