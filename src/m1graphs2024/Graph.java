@@ -14,7 +14,7 @@ public class Graph {
     public Graph() {/* Empty Constructor */
     }
 
-    /* Constructor using Successor Array SA
+    /* Constructor using Successor Array SA for unweighted graph
     * to Change the parameter to int... SA for unspecified number of integers
     * */
     public Graph(int... SA) { /* int[] SA  for array*/

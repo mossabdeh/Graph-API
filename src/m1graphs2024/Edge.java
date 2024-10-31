@@ -14,7 +14,7 @@ public class Edge implements Comparable<Edge>{
        if (from == null || to == null) {
             throw new IllegalArgumentException("Source Node & Target Node must not be nulls.");
         }
-       if (!from.getGraphHolder().equals(to.getGraphHolder())) {
+       if (!from.getGraph().equals(to.getGraph())) {
             throw new IllegalArgumentException("Source & Target Node must be in the same Graph.");
        }
         this.from = from;
@@ -38,7 +38,7 @@ public class Edge implements Comparable<Edge>{
         if (from == null || to == null) {
             throw new IllegalArgumentException("Source Node & Target Node must not be nulls.");
         }
-        if (!from.getGraphHolder().equals(to.getGraphHolder())) {
+        if (!from.getGraph().equals(to.getGraph())) {
             throw new IllegalArgumentException("Source & Target Node must be in the same Graph.");
         }
         this.from = from;
