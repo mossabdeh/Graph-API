@@ -97,4 +97,28 @@ public class Edge implements Comparable<Edge>{
     public Node getTo() {
         return to;
     }
+
+    public Node getFrom() {
+        return from;}
+
+    public Edge getSymmetric(){
+        return new Edge(to,from,weight);
+    }
+
+   public boolean isSelfLoop(){
+        return from.equals(to);
+    }
+
+   public boolean isMultiEdge(){
+        return from.getGraph().adjEdList.get(from).stream().filter(e -> e.to.equals(to)).count() > 1;
+    }
+
+    public boolean isWeighted(){
+        return weight != null;
+    }
+
+    public Integer getWeight(){
+        return weight;}
+
+
 }
