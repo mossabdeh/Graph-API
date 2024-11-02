@@ -102,7 +102,7 @@ public class Graph {
 
         // Remove any edges in other nodes' lists that point to `n`
         for (List<Edge> edges : adjEdList.values()) {
-            edges.removeIf(edge -> edge.getTo().equals(n));
+            edges.removeIf(edge -> edge.to().equals(n));
         }
 
         return true; // Node and all its incident edges were removed
@@ -139,7 +139,7 @@ public class Graph {
 
         // Retrieve all edges from `n` and add target nodes to the set
         for (Edge edge : adjEdList.get(n)) {
-            uniqueSuccessors.add(edge.getTo());
+            uniqueSuccessors.add(edge.to());
         }
 
         // Convert the set to a list and return it
@@ -158,7 +158,7 @@ public class Graph {
 
         // Retrieve all edges from `n` and add target nodes to the list
         for (Edge edge : adjEdList.get(n)) {
-            successorsWithDuplicates.add(edge.getTo());
+            successorsWithDuplicates.add(edge.to());
         }
 
         // Return the list with possible duplicates
@@ -174,10 +174,10 @@ public class Graph {
         }
 
         // Check if there is an edge from `u` to `v`
-        boolean hasEdgeFromUToV = adjEdList.get(u).stream().anyMatch(edge -> edge.getTo().equals(v));
+        boolean hasEdgeFromUToV = adjEdList.get(u).stream().anyMatch(edge -> edge.to().equals(v));
 
         // Check if there is an edge from `v` to `u` (for undirected behavior)
-        boolean hasEdgeFromVToU = adjEdList.get(v).stream().anyMatch(edge -> edge.getTo().equals(u));
+        boolean hasEdgeFromVToU = adjEdList.get(v).stream().anyMatch(edge -> edge.to().equals(u));
 
         // Return true if either condition is true
         return hasEdgeFromUToV || hasEdgeFromVToU;
@@ -193,7 +193,7 @@ public class Graph {
         // Iterate over each node's edges in the graph
         for (List<Edge> edges : adjEdList.values()) {
             for (Edge edge : edges) {
-                if (edge.getTo().equals(n)) {
+                if (edge.to().equals(n)) {
                     inDegreeCount++; // Increment count if an edge points to `n`
                 }
             }
@@ -231,9 +231,9 @@ public class Graph {
             return false; // If either node is missing, no edge can exist
         }
         // Check if there is an edge from `u` to `v`
-        boolean edgeFromUToV = adjEdList.get(u).stream().anyMatch(edge -> edge.getTo().equals(v));
+        boolean edgeFromUToV = adjEdList.get(u).stream().anyMatch(edge -> edge.to().equals(v));
         // Check if there is an edge from `v` to `u` (for undirected behavior)
-        boolean edgeFromVToU = adjEdList.get(v).stream().anyMatch(edge -> edge.getTo().equals(u));
+        boolean edgeFromVToU = adjEdList.get(v).stream().anyMatch(edge -> edge.to().equals(u));
         // Return true if either direction has an edge
         return edgeFromUToV || edgeFromVToU;
     }
@@ -245,7 +245,7 @@ public class Graph {
             return false; // No edge exists between u and v, so it's not a multi-edge
         }
         // Count the number of edges from u to v
-        long count = this.adjEdList.get(u).stream().filter(edge -> edge.getTo().equals(v)).count();
+        long count = this.adjEdList.get(u).stream().filter(edge -> edge.to().equals(v)).count();
         // If there is more than one edge from u to v, it's a multi-edge
         return count > 1;
     }
@@ -284,7 +284,7 @@ public class Graph {
             return false; // `from` node is not in the graph, so no edge can exist
         }
         // Attempt to remove the edge from `from` to `to`
-        return adjEdList.get(from).removeIf(edge -> edge.getTo().equals(to));
+        return adjEdList.get(from).removeIf(edge -> edge.to().equals(to));
          // `removeIf` returns true if any edge was removed, false otherwise
     }
 
@@ -298,7 +298,7 @@ public class Graph {
         List<Edge> inEdges = new ArrayList<>();
         for (List<Edge> edges : adjEdList.values()) {
             for (Edge edge : edges) {
-                if (edge.getTo().equals(n)) {
+                if (edge.to().equals(n)) {
                     inEdges.add(edge);
                 }
             }
@@ -316,7 +316,7 @@ public class Graph {
 
     public List<Edge> getEdges(Node u, Node v){
         return adjEdList.get(u).stream()
-                .filter(edge -> edge.getTo().equals(v))
+                .filter(edge -> edge.to().equals(v))
                 .toList();
     }
 
@@ -335,7 +335,7 @@ public class Graph {
         for (Node node : adjEdList.keySet()) {
             SA.add(node.getId());
             for (Edge edge : adjEdList.get(node)) {
-                SA.add(edge.getTo().getId());
+                SA.add(edge.to().getId());
             }
             SA.add(0);
         }
@@ -349,7 +349,7 @@ public class Graph {
             Node node = getNode(i + 1);
             if (node != null) {
                 for (Edge edge : adjEdList.get(node)) {
-                    adjMatrix[i][edge.getTo().getId() - 1] = 1;
+                    adjMatrix[i][edge.to().getId() - 1] = 1;
                 }
             }
         }
@@ -362,7 +362,7 @@ public class Graph {
             reverseGraph.addNode(node);
         }
         for (Edge edge : getAllEdges()) {
-            reverseGraph.addEdge(edge.getTo(), edge.getFrom());
+            reverseGraph.addEdge(edge.to(), edge.from());
         }
         return reverseGraph;
     }
@@ -377,7 +377,7 @@ public class Graph {
         for (Node u : this.adjEdList.keySet()) {
             // For each edge from `u`, check if it forms a multi-edge with its target node `v`
             for (Edge edge : this.adjEdList.get(u)) {
-                Node v = edge.getTo();
+                Node v = edge.to();
                 // If `u` has a multi-edge to `v`, return true
                 if (isMultiEdge(u, v)) {
                     return true;
@@ -424,7 +424,7 @@ public class Graph {
         // Iterate over each node and its edges in the current graph's adjacency list
         for (Node from : adjEdList.keySet()) {
             for (Edge edge : adjEdList.get(from)) {
-                Node to = edge.getTo();
+                Node to = edge.to();
 
                 // Skip self-loops
                 if (from.equals(to)) {
@@ -451,7 +451,7 @@ public class Graph {
             copyGraph.addNode(node);
         }
         for (Edge edge : getAllEdges()) {
-            copyGraph.addEdge(edge.getFrom(), edge.getTo());
+            copyGraph.addEdge(edge.from(), edge.to());
         }
         return copyGraph;
     }
@@ -698,7 +698,7 @@ public class Graph {
 
         for (Node from : adjEdList.keySet()) {
             for (Edge edge : adjEdList.get(from)) {
-                Node to = edge.getTo();
+                Node to = edge.to();
                 if (!edgesProcessed.contains(edge)) {
                     if (edge.getWeight() != null) {
                         dotBuilder.append("    ")

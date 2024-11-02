@@ -22,15 +22,28 @@ public class Edge implements Comparable<Edge>{
         this.weight = null; /* to ensure theres its unweighted graph*/
     }
 
-    /* Constructor no weight version node ids */
-    public Edge(Integer from , Integer to){
-        if (from == null || to == null) {
-            throw new IllegalArgumentException("Source Node & Target Node must not be nulls.");
+    /* Overloaded Constructor no weight version node ids */
+    public Edge(int fromId, int toId, Graph graph) {
+        Node fromNode = graph.getNode(fromId);
+        Node toNode = graph.getNode(toId);
+
+        if (fromNode == null || toNode == null || fromNode.getGraph() != toNode.getGraph()) {
+            throw new IllegalArgumentException("Nodes must be non-null and belong to the same graph");
         }
-        //TODO: Check if the nodes exist in the same graph
-        this.from = new Node(from,null);
-        this.to = new Node(to,null);
-        this.weight = null; /* to ensure theres its unweighted graph*/
+        this.from = fromNode;
+        this.to = toNode;
+        this.weight = null;
+    }
+     /* Overloaded Constructor with weight version node ids */
+    public Edge(int fromId, int toId, Graph graph, Integer weight) {
+        Node fromNode = graph.getNode(fromId);
+        Node toNode = graph.getNode(toId);
+        if (fromNode == null || toNode == null || fromNode.getGraph() != toNode.getGraph()) {
+            throw new IllegalArgumentException("Nodes must be non-null and belong to the same graph");
+        }
+        this.from = fromNode;
+        this.to = toNode;
+        this.weight = weight;
     }
 
     /* Constructor with weight version node references */
@@ -94,11 +107,11 @@ public class Edge implements Comparable<Edge>{
     public int hashCode() {
         return Objects.hash(from, to, weight);}
 
-    public Node getTo() {
+    public Node to() {
         return to;
     }
 
-    public Node getFrom() {
+    public Node from() {
         return from;}
 
     public Edge getSymmetric(){
