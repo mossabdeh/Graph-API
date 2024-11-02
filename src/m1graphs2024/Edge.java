@@ -3,9 +3,9 @@ package m1graphs2024;
 import java.util.Objects;
 
 public class Edge implements Comparable<Edge>{
-    private Node from; /* Source Node */
-    private Node to;  /* target Node */
-    private Integer weight; /* weight of the  Node  (null = no weight)
+    private final Node from; /* Source Node */
+    private final Node to;  /* target Node */
+    private final Integer weight; /* weight of the  Node  (null = no weight)
     */
 
 
@@ -19,7 +19,7 @@ public class Edge implements Comparable<Edge>{
        }
         this.from = from;
         this.to = to;
-        this.weight = null; /* to ensure theres its unweighted graph*/
+        this.weight = null; /* to ensure there's its unweighted graph*/
     }
 
     /* Overloaded Constructor no weight version node ids */
@@ -87,7 +87,7 @@ public class Edge implements Comparable<Edge>{
          this.weight is Non-Null, o.weight is Null   or
          this.weight is Null, o.weight is Non-Null
 
-         because  its a weighted graph or not weighted graph
+         because  it's a weighted graph or not weighted graph
          */
 
         return 0;
@@ -130,8 +130,9 @@ public class Edge implements Comparable<Edge>{
         return weight != null;
     }
 
+    /* Getting the weight of an edge (or null in the unweighted case) */
     public Integer getWeight(){
-        return weight;}
+        return isWeighted() ? weight : null;}
 
 
 }
