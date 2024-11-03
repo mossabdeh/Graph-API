@@ -173,7 +173,7 @@ public class Graph {
 
     /* ------------- Methods related to the edges. ------------- */
 
-    //TODO implement for undirected graph /2
+
     public int nbEdges(){/* directed graph*/
         return adjEdList.values().stream().mapToInt(List::size).sum();
     }
@@ -313,6 +313,7 @@ public class Graph {
         return adjMatrix;
     }
 
+    //TODO use symmetric edge
     public Graph getReverse(){
         Graph reverseGraph = new Graph();
         for (Node node : adjEdList.keySet()) {
@@ -326,13 +327,27 @@ public class Graph {
 
     //TODO
     public Graph getTransitiveClosure() {
-        return null;
+        Graph transitiveClosure = new Graph();
+        transitiveClosure = this.copy();
+        if (!transitiveClosure.isSimpleGraph()) {
+            transitiveClosure= transitiveClosure.toSimpleGraph();
+        }
+        // Step 2: Compute transitive closure using adjacency list traversal
+        for (Node node : transitiveClosure.getAllNodes()) {
+            for (Node intermediate : transitiveClosure.getSuccessors(node)) {
+                for (Node target : transitiveClosure.getSuccessors(intermediate)) {
+                    if (!node.equals(target) && !transitiveClosure.existsEdge(node, target)) {
+                        transitiveClosure.addEdge(node, target);
+                    }
+                }
+            }
+        }
+        return transitiveClosure;
     }
 
     public boolean isMultiGraph() {
         // Iterate over each node in the adjacency list
         for (Node u : this.adjEdList.keySet()) {
-            // For each edge from `u`, check if it forms a multi-edge with its target node `v`
             for (Edge edge : this.adjEdList.get(u)) {
                 Node v = edge.to();
                 // If `u` has a multi-edge to `v`, return true
@@ -344,19 +359,8 @@ public class Graph {
         // If no multi-edges are found, return false
         return false;
     }
-
     public boolean isSimpleGraph() {
-        // Iterate over each node and its edges in the adjacency list
-        for (List<Edge> edges : adjEdList.values()) {
-            for (Edge edge : edges) {
-                // Check if the edge is a self-loop or part of a multi-edge
-                if (edge.isSelfLoop() || edge.isMultiEdge()) {
-                    return false; // The graph is not simple if any such edge is found
-                }
-            }
-        }
-        // If no self-loops or multi-edges are found, the graph is simple
-        return true;
+        return !this.hasSelfLoops() && !this.isMultiGraph();
     }
 
     public boolean hasSelfLoops() {
@@ -382,23 +386,16 @@ public class Graph {
         for (Node from : adjEdList.keySet()) {
             for (Edge edge : adjEdList.get(from)) {
                 Node to = edge.to();
-
-                // Skip self-loops
-                if (from.equals(to)) {
-                    continue;
-                }
-
+                if (edge.isSelfLoop()) {continue;}  /* Skip self-loops */
                 // Add nodes to the new graph if they do not already exist
                 simpleGraph.addNode(from);
                 simpleGraph.addNode(to);
-
                 // Add an edge from `from` to `to` if it's the first occurrence in the simple graph
                 if (!simpleGraph.existsEdge(from, to)) {
                     simpleGraph.addEdge(from, to);
                 }
             }
         }
-
         return simpleGraph;
     }
 
@@ -440,7 +437,6 @@ public class Graph {
         return visited;
     }
 
-    // TODO overload with node id
     public List<Node> getDFS(Node u) {
         List<Node> visited = new ArrayList<>();
         Stack<Node> stack = new Stack<>();
@@ -459,6 +455,11 @@ public class Graph {
         }
 
         return visited;
+    }
+
+    public List<Node> getDFS(int id){
+        Node n = getNode(id);
+        return getDFS(n);
     }
 
     public List<Node> getBFS() {
@@ -490,7 +491,6 @@ public class Graph {
         return result;
     }
 
-    // TODO overload with node id
 
     public List<Node> getBFS(Node u) {
         Set<Node> visited = new HashSet<>();
@@ -516,6 +516,10 @@ public class Graph {
         return result;
     }
 
+    public List<Node> getBFS(int id) {
+        Node n = getNode(id);
+        return getBFS(n);
+    }
 
     public List<Node> getDFSWithVisitInfo(Map<Node, NodeVisitInfo> nodeVisit, Map<Edge, EdgeVisitType> edgeVisit) {
         if (adjEdList.isEmpty()) return new ArrayList<>();
