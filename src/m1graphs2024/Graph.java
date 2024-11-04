@@ -24,7 +24,9 @@ public class Graph {
         adjEdList.put(currentNode, new ArrayList<>()); // Initialize adjacency list for the first node (edges)
 
 
-        for (int valueSA : SA) {/* Loop in the SA array */
+        for (int i = 0; i < SA.length - 1; i++) { /* Loop through SA, excluding the last element */
+            int valueSA = SA[i];
+            /* Loop in the SA array */
             if (valueSA == 0) {/* if we found 0 move to next node */
                 currentNodeId++;
                 currentNode = new Node(currentNodeId, this); /* create the new Node */
@@ -58,8 +60,8 @@ public class Graph {
     }
 
 
-    public boolean usesNode(Node n){
-        return this.adjEdList.keySet().stream().anyMatch(node -> node.getId() == n.getId());
+    public boolean usesNode(Node node) {
+        return adjEdList != null && adjEdList.containsKey(node);
     }
 
     public boolean usesNode(int id){
@@ -67,8 +69,14 @@ public class Graph {
     }
 
     public boolean holdsNode(Node n) {
-        return n.getGraph() == this && usesNode(n);
+        // Check if the node is not null and belongs to this graph
+        if (n == null || n.getGraph() != this) {
+            return false;
+        }
+        // Check if adjEdList is not null and contains the node
+        return adjEdList != null && usesNode(n);
     }
+
 
     public Node getNode(int id) {
         /* Search for a node with the specified id in the adjacency list keys*/
@@ -77,10 +85,16 @@ public class Graph {
                 .findFirst()
                 .orElse(null);
     }
-    public boolean addNode(Node n) {
-        if (usesNode(n)) {return false; } /* Check if a node with the same id already exists */
-        adjEdList.put(n, new ArrayList<>()); /* Add the node to the adjacency list with an empty list of edges */
-        return true; /* Node was added successfully */
+    public boolean addNode(Node node) {
+        if (adjEdList == null) {
+            adjEdList = new HashMap<>(); // Double-check initialization
+        }
+
+        if (!adjEdList.containsKey(node)) {
+            adjEdList.put(node, new ArrayList<>());
+             return true;// Initialize adjacency list for the node
+        }
+        return false;
     }
     public boolean addNode(int id) {
         if(usesNode(id)){return false;} /* Check if a node with the same id already exists */
@@ -219,17 +233,43 @@ public class Graph {
     }
 
     public void addEdge(int from, int to) {
-        Node nodeFrom = getNode(from);
-        Node nodeTo = getNode(to);
-        addEdge(nodeFrom, nodeTo);
+        // Ensure both nodes exist in the graph
+        if (getNode(from) == null) {
+            addNode(from);
+        }
+        if (getNode(to) == null) {
+            addNode(to);
+        }
+
+        // Retrieve the nodes after ensuring they exist
+        Node nodeFrom = this.getNode(from);
+        Node nodeTo = this.getNode(to);
+
+        // Now, create the edge, as both nodes are present in the graph
+        Edge edge = new Edge(from, to, this);  // Now safe to call Edge constructor
+
+        // Add the edge to the adjacency list
+        adjEdList.get(nodeFrom).add(edge);
     }
 
-    public void addEdge(Edge e){
-        if (e.isWeighted()){
-            addEdge(e.from(), e.to(), e.getWeight());
+
+    public void addEdge(Edge e) {
+        // Check if 'from' node exists; if not, add it to the graph
+        if (getNode(e.from().getId()) == null) {
+            addNode(e.from().getId());
         }
-        addEdge(e.from(), e.to());
+        // Check if 'to' node exists; if not, add it to the graph
+        if (getNode(e.to().getId()) == null) {
+            addNode(e.to().getId());
+        }
+        // Retrieve the nodes after ensuring they exist
+        Node nodeFrom = this.getNode(e.from().getId());
+        Node nodeTo = this.getNode(e.to().getId());
+
+        // Now that nodes are validated, add the edge directly to adjacency list
+        adjEdList.get(nodeFrom).add(e);
     }
+
     public void addEdge(int from, int to, Integer weight) {
         Node nodeFrom = getNode(from);
         Node nodeTo = getNode(to);
@@ -244,6 +284,9 @@ public class Graph {
     public boolean removeEdge(int from, int to) {
         Node nodeFrom = getNode(from);
         Node nodeTo = getNode(to);
+        if (nodeFrom == null || nodeTo == null) {
+            return false;
+        }
         return removeEdge(nodeFrom, nodeTo);}
 
     public boolean removeEdge(Edge e){
@@ -314,16 +357,22 @@ public class Graph {
     }
 
     //TODO use symmetric edge
-    public Graph getReverse(){
+    public Graph getReverse() {
         Graph reverseGraph = new Graph();
-        for (Node node : adjEdList.keySet()) {
-            reverseGraph.addNode(node);
+        // Add all nodes to the reverse graph
+        if (this.adjEdList == null){
+            System.out.println("i m here ");
         }
+        for (Node node : this.adjEdList.keySet()) {
+            reverseGraph.addNode(new Node(node.getId(), reverseGraph)); // Create new Node instances if necessary
+        }
+        // Add reversed edges to the reverse graph
         for (Edge edge : getAllEdges()) {
-            reverseGraph.addEdge(edge.to(), edge.from());
+            reverseGraph.addEdge(edge.to().getId(), edge.from().getId()); // Add reversed edge
         }
         return reverseGraph;
     }
+
 
     //TODO
     public Graph getTransitiveClosure() {
@@ -593,7 +642,8 @@ public class Graph {
     // 2. Import method with custom extension
     public static Graph fromDotFile(String filename, String extension) {
         Graph graph = new Graph();
-        String filePath = filename + extension;
+        String filePath = "src/m1graphs2024/graphTests/" + filename + extension;
+
 
         Pattern directedPattern = Pattern.compile("(\\d+) -> (\\d+)( \\[label=(\\d+), len=(\\d+)\\])?");
         Pattern undirectedPattern = Pattern.compile("(\\d+) -- (\\d+)( \\[label=(\\d+), len=(\\d+)\\])?");
@@ -616,12 +666,15 @@ public class Graph {
                     Node from = new Node(fromId, graph);
                     Node to = new Node(toId, graph);
 
+                    System.out.println("Adding nodes " + fromId + " and " + toId + " to the graph.");
                     graph.addNode(from);
                     graph.addNode(to);
 
                     if (weight != null) {
+                        System.out.println("Adding directed edge with weight from " + fromId + " to " + toId);
                         graph.addEdge(from, to, weight);
                     } else {
+                        System.out.println("Adding directed edge from " + fromId + " to " + toId);
                         graph.addEdge(from, to);
                     }
                 } else if (undirectedMatcher.matches()) {
@@ -632,28 +685,33 @@ public class Graph {
                     Node from = new Node(fromId, graph);
                     Node to = new Node(toId, graph);
 
+                    System.out.println("Adding nodes " + fromId + " and " + toId + " to the graph.");
                     graph.addNode(from);
                     graph.addNode(to);
 
                     if (weight != null) {
+                        System.out.println("Adding undirected edge with weight between " + fromId + " and " + toId);
                         graph.addEdge(from, to, weight);
                         graph.addEdge(to, from, weight);
                     } else {
+                        System.out.println("Adding undirected edge between " + fromId + " and " + toId);
                         graph.addEdge(from, to);
                         graph.addEdge(to, from);
                     }
                 }
             }
+
         } catch (IOException e) {
             System.err.println("Error reading the DOT file: " + e.getMessage());
         }
 
+        System.out.println("Graph imported successfully with " + graph.adjEdList.size() + " nodes.");
         return graph;
     }
 
     // 3. Export method to string in DOT format
     public String toDotString() {
-        StringBuilder dotBuilder = new StringBuilder("graph G {\n");
+        StringBuilder dotBuilder = new StringBuilder("digraph G {\n");
 
         Set<Edge> edgesProcessed = new HashSet<>();
 

@@ -78,7 +78,7 @@ public class UndirectedGraph extends Graph{
 
     public static UndirectedGraph fromDotFile(String filename, String extension) {
         UndirectedGraph graph = new UndirectedGraph();
-        String filePath = filename + extension;
+        String filePath = "src/m1graphs2024/graphTests/" + filename + extension;
 
         Pattern directedPattern = Pattern.compile("(\\d+) -> (\\d+)( \\[label=(\\d+), len=(\\d+)\\])?");
         Pattern undirectedPattern = Pattern.compile("(\\d+) -- (\\d+)( \\[label=(\\d+), len=(\\d+)\\])?");

@@ -2,6 +2,7 @@ package m1graphs2024;
 
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Node implements Comparable<Node> {
     private final int id;
@@ -123,12 +124,13 @@ public class Node implements Comparable<Node> {
     }
 
     /* for getting the list of all edges entering node this. */
-    public List<Edge> getInEdges(){
+    public List<Edge> getInEdges() {
         return graphHolder.adjEdList.values().stream()
                 .flatMap(List::stream)
                 .filter(edge -> edge.to().equals(this))
-                .toList();
+                .collect(Collectors.toCollection(ArrayList::new)); // Collect to a mutable ArrayList
     }
+
 
 
     // TODO fix it for undirected graph

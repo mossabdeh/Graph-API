@@ -23,18 +23,44 @@ public class Edge implements Comparable<Edge>{
     }
 
     /* Overloaded Constructor no weight version node ids */
-    public Edge(int fromId, int toId, Graph graph) {
+ /*   public Edge(int fromId, int toId, Graph graph) {
         Node fromNode = graph.getNode(fromId);
         Node toNode = graph.getNode(toId);
-
-        if (fromNode == null || toNode == null || fromNode.getGraph() != toNode.getGraph()) {
-            throw new IllegalArgumentException("Nodes must be non-null and belong to the same graph");
+        System.out.println("fromNode: "+fromNode);
+        System.out.println("toNode: "+toNode);
+        if (fromNode == null) {
+            throw new IllegalArgumentException("Node with ID " + fromId + " does not exist in the graph.");
         }
+        if (toNode == null) {
+            throw new IllegalArgumentException("Node with ID " + toId + " ALI trich does not exist in the graph.");
+        }
+
         this.from = fromNode;
         this.to = toNode;
-        this.weight = null;
+        this.weight = null; // Assuming weight is optional; set to a default if necessary
+    }*/
+
+    public Edge(int fromId, int toId, Graph graph) {
+        // Check and add 'from' node if it doesn't exist
+        Node fromNode = graph.getNode(fromId);
+        if (fromNode == null) {
+            graph.addNode(fromId);
+            fromNode = graph.getNode(fromId); // Retrieve the newly added node
+        }
+
+        // Check and add 'to' node if it doesn't exist
+        Node toNode = graph.getNode(toId);
+        if (toNode == null) {
+            graph.addNode(toId);
+            toNode = graph.getNode(toId); // Retrieve the newly added node
+        }
+
+        // Assign the validated nodes to the edge
+        this.from = fromNode;
+        this.to = toNode;
+        this.weight = null; // Assuming unweighted by default
     }
-     /* Overloaded Constructor with weight version node ids */
+    /* Overloaded Constructor with weight version node ids */
     public Edge(int fromId, int toId, Graph graph, Integer weight) {
         Node fromNode = graph.getNode(fromId);
         Node toNode = graph.getNode(toId);
@@ -99,8 +125,11 @@ public class Edge implements Comparable<Edge>{
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Edge edge = (Edge) o;
-        return from.equals(edge.from) && to.equals(edge.to) && weight.equals(edge.weight);
+        return from.equals(edge.from) &&
+                to.equals(edge.to) &&
+                Objects.equals(weight, edge.weight); // Safely handle null values
     }
+
 
     /* Redefining hashCode() to guarantee consistency with equals() */
     @Override
