@@ -127,7 +127,7 @@ public class Edge implements Comparable<Edge>{
         Edge edge = (Edge) o;
         return from.equals(edge.from) &&
                 to.equals(edge.to) &&
-                Objects.equals(weight, edge.weight); // Safely handle null values
+                Objects.equals(weight, edge.weight); // Safe null handling for weight
     }
 
 

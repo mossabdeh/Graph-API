@@ -93,7 +93,9 @@ public class Node implements Comparable<Node> {
         return MultiSuccessors;
     }
 
-    /* knowing whether node u is adjacent to node this. */
+    /**
+     * Checks if node `u` is directly connected (adjacent) to this node in the graph.
+     */
     public boolean adjacent(Node u) {
         return graphHolder.adjEdList.get(this).stream().anyMatch(edge -> edge.to().equals(u));
     }

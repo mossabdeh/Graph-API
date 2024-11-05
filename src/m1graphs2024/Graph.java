@@ -68,13 +68,12 @@ public class Graph {
         return this.adjEdList.keySet().stream().anyMatch(node -> node.getId() == id);
     }
 
+    /**
+     * Checks if node `n` is part of this graph.
+     */
     public boolean holdsNode(Node n) {
-        // Check if the node is not null and belongs to this graph
-        if (n == null || n.getGraph() != this) {
-            return false;
-        }
-        // Check if adjEdList is not null and contains the node
-        return adjEdList != null && usesNode(n);
+        // Ensure `n` is not null, belongs to this graph, and is in `adjEdList`
+        return n != null && n.getGraph() == this && adjEdList != null && adjEdList.containsKey(n);
     }
 
 
@@ -151,12 +150,16 @@ public class Graph {
         Node n = getNode(id);
         return getSuccessorsMulti(n);}
 
+
+    /**
+     * Checks if nodes `u` and `v` are adjacent in the graph, meaning there is a direct edge from `u` to `v`.
+     */
     public boolean adjacent(Node u, Node v) {
-        // Check if `u` or `v` are not in the graph
+        // Verify that both nodes are part of this graph
         if (!holdsNode(u) || !holdsNode(v)) {
-            return false; // If either node is missing, they cannot be adjacent
+            return false; // Either node is not in the graph
         }
-        // Only check if there is a directed edge from `u` to `v`
+        // Check if there is a direct edge from `u` to `v`
         return u.adjacent(v);
     }
 
@@ -198,10 +201,18 @@ public class Graph {
         return adjEdList.values().stream().mapToInt(List::size).sum();
     }
 
+    /**
+     * Checks if an edge exists between `u` and `v` in this graph.
+     * Delegates to `adjacent` as they serve the same purpose.
+     */
     public boolean existsEdge(Node u, Node v) {
-        boolean exists = adjacent(u, v);
-        return exists;
+        // Check if the `u` node has any edges in the adjacency list
+        if (!adjEdList.containsKey(u)) return false;
+
+        // Check if there’s an edge from `u` to `v` in `u`'s list of edges
+        return adjEdList.get(u).stream().anyMatch(edge -> edge.to().equals(v));
     }
+
     public boolean existsEdge(int u, int v) {
         return adjacent(u,v);}
 
@@ -211,8 +222,18 @@ public class Graph {
     }
 
     public boolean isMultiEdge(Node u, Node v) {
-        return adjEdList.get(u).stream().filter(edge -> edge.to().equals(v)).count() > 1;
+        // Ensure that `u` exists in the adjacency list
+        if (!adjEdList.containsKey(u)) return false;
+
+        // Count edges from `u` to `v`, stopping early if more than one is found
+        long count = adjEdList.get(u).stream()
+                .filter(edge -> edge.to().equals(v))
+                .limit(2) // Stop once we know there's more than one edge
+                .count();
+
+        return count > 1;
     }
+
     public boolean isMultiEdge(int u, int v) {
         Node nodeU = getNode(u);
         Node nodeV = getNode(v);
@@ -382,17 +403,31 @@ public class Graph {
 
     //TODO
     public Graph getTransitiveClosure() {
-        System.out.println("Starting transitive closure computation...");
-
-        // Step 1: Create a simple copy of the graph to remove multi-edges and self-loops
-        Graph transitiveClosure = this.copy().toSimpleGraph();
-        System.out.println(transitiveClosure.toDotString());
 
 
-        // Step 2: Apply the Roy-Warshall algorithm to compute the transitive closure
+        // Step 1: Create a new graph to hold the transitive closure
+        Graph transitiveClosure = new Graph();
+        transitiveClosure.adjEdList = new HashMap<>(); // Initialize adjEdList to prevent NullPointerException
+
+        Graph simpleGraph = new Graph();
+        simpleGraph = this.toSimpleGraph();
+        // Copy all nodes from the original graph to the transitive closure graph
+        for (Node node : simpleGraph.adjEdList.keySet()) {
+            transitiveClosure.addNode(node.getId());
+        }
+
+        // Step 2: Add all original edges (excluding multi-edges and self-loops) to the transitive closure graph
+        for (Node from : adjEdList.keySet()) {
+            for (Edge edge : adjEdList.get(from)) {
+                Node to = edge.to();
+                if (!from.equals(to) && !transitiveClosure.existsEdge(from, to)) {
+                    transitiveClosure.addEdge(from, to); // Add only if it’s not a self-loop and not already present
+                }
+            }
+        }
+        // Step 3: Apply the Roy-Warshall algorithm to compute the transitive closure
         List<Node> allNodes = new ArrayList<>(transitiveClosure.getAllNodes());
         for (Node intermediate : allNodes) {
-            System.out.println("Using intermediate node: " + intermediate.getId());
             for (Node source : allNodes) {
                 for (Node target : allNodes) {
                     // Check if there is a path from source to target through intermediate
@@ -400,13 +435,11 @@ public class Graph {
                         // Add a direct edge from source to target if it doesn't exist and is not a self-loop
                         if (!transitiveClosure.existsEdge(source, target) && !source.equals(target)) {
                             transitiveClosure.addEdge(source, target);
-
                         }
                     }
                 }
             }
         }
-        System.out.println("Transitive closure computation completed.");
         return transitiveClosure;
     }
 
@@ -417,20 +450,23 @@ public class Graph {
 
 
 
+
     public boolean isMultiGraph() {
         // Iterate over each node in the adjacency list
-        for (Node u : this.adjEdList.keySet()) {
-            for (Edge edge : this.adjEdList.get(u)) {
+        for (Node u : adjEdList.keySet()) {
+            // Check each target node for multi-edges
+            for (Edge edge : adjEdList.get(u)) {
                 Node v = edge.to();
-                // If `u` has a multi-edge to `v`, return true
+                // If there is a multi-edge from `u` to `v`, return true immediately
                 if (isMultiEdge(u, v)) {
                     return true;
                 }
             }
         }
-        // If no multi-edges are found, return false
+        // No multi-edges were found, so return false
         return false;
     }
+
     public boolean isSimpleGraph() {
         return !this.hasSelfLoops() && !this.isMultiGraph();
     }
@@ -453,23 +489,37 @@ public class Graph {
     public Graph toSimpleGraph() {
         // Create a new Graph instance to hold the simple graph
         Graph simpleGraph = new Graph();
+        simpleGraph.adjEdList = new HashMap<>(); // Initialize adjacency list for the new graph
 
-        // Iterate over each node and its edges in the current graph's adjacency list
+        // Step 1: Copy all nodes from the original graph to the simple graph
+        for (Node node : adjEdList.keySet()) {
+            simpleGraph.addNode(node.getId());
+        }
+
+        // Step 2: Copy edges while avoiding self-loops and multi-edges
         for (Node from : adjEdList.keySet()) {
             for (Edge edge : adjEdList.get(from)) {
                 Node to = edge.to();
-                if (edge.isSelfLoop()) {continue;}  /* Skip self-loops */
-                // Add nodes to the new graph if they do not already exist
-                simpleGraph.addNode(from);
-                simpleGraph.addNode(to);
-                // Add an edge from `from` to `to` if it's the first occurrence in the simple graph
+
+                // Skip self-loops
+                if (from.equals(to)) continue;
+
+                // Only add the edge if it doesn’t already exist in the simple graph
                 if (!simpleGraph.existsEdge(from, to)) {
                     simpleGraph.addEdge(from, to);
                 }
             }
         }
+
         return simpleGraph;
     }
+
+
+
+
+
+
+
 
     public Graph copy(){
         Graph copyGraph = new Graph();
@@ -738,9 +788,17 @@ public class Graph {
         // Track all nodes that appear in edges (either as sources or destinations)
         Set<Node> nodesWithEdges = new HashSet<>();
 
-        // Add each edge in the adjacency list to the DOT representation
-        for (Node from : adjEdList.keySet()) {
-            for (Edge edge : adjEdList.get(from)) {
+        // Sort nodes by their natural order (assuming Node has Comparable implemented or by ID)
+        List<Node> sortedNodes = new ArrayList<>(adjEdList.keySet());
+        Collections.sort(sortedNodes, Comparator.comparingInt(Node::getId));
+
+        // Add each edge in the adjacency list to the DOT representation, sorted by edges
+        for (Node from : sortedNodes) {
+            // Get edges and sort them
+            List<Edge> sortedEdges = new ArrayList<>(adjEdList.get(from));
+            Collections.sort(sortedEdges);
+
+            for (Edge edge : sortedEdges) {
                 Node to = edge.to();
 
                 // Include every edge, including self-loops and multiple edges
@@ -757,7 +815,7 @@ public class Graph {
         }
 
         // Add truly isolated nodes (nodes with no incoming or outgoing edges)
-        for (Node node : adjEdList.keySet()) {
+        for (Node node : sortedNodes) {
             if (!nodesWithEdges.contains(node)) {
                 dotBuilder.append("    ")
                         .append(node.getId())
@@ -768,6 +826,7 @@ public class Graph {
         dotBuilder.append("}\n");
         return dotBuilder.toString();
     }
+
 
 
 
