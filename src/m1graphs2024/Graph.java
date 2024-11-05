@@ -737,25 +737,22 @@ public class Graph {
 
         // Track all nodes that appear in edges (either as sources or destinations)
         Set<Node> nodesWithEdges = new HashSet<>();
-        Set<String> edgesProcessed = new HashSet<>();
 
         // Add each edge in the adjacency list to the DOT representation
         for (Node from : adjEdList.keySet()) {
             for (Edge edge : adjEdList.get(from)) {
                 Node to = edge.to();
-                String edgeKey = from.getId() + "->" + to.getId();
 
-                // Avoid processing duplicate edges and self-loops
-                if (!edgesProcessed.contains(edgeKey) && !from.equals(to)) {
-                    dotBuilder.append("    ")
-                            .append(from.getId())
-                            .append(" -> ")
-                            .append(to.getId())
-                            .append(";\n");
-                    edgesProcessed.add(edgeKey);
-                    nodesWithEdges.add(from);
-                    nodesWithEdges.add(to);
-                }
+                // Include every edge, including self-loops and multiple edges
+                dotBuilder.append("    ")
+                        .append(from.getId())
+                        .append(" -> ")
+                        .append(to.getId())
+                        .append(";\n");
+
+                // Mark nodes as having edges
+                nodesWithEdges.add(from);
+                nodesWithEdges.add(to);
             }
         }
 
@@ -771,6 +768,7 @@ public class Graph {
         dotBuilder.append("}\n");
         return dotBuilder.toString();
     }
+
 
 
 
