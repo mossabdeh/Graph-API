@@ -161,4 +161,11 @@ public class Node implements Comparable<Node> {
                 .toList();
     }
 
+    @Override
+    public String toString() {
+        return String.valueOf(id);
+    }
+
+
+
 }

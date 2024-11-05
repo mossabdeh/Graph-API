@@ -164,4 +164,9 @@ public class Edge implements Comparable<Edge>{
         return isWeighted() ? weight : null;}
 
 
+    @Override
+    public String toString() {
+        return from.getId() + "->" + to.getId();
+    }
+
 }

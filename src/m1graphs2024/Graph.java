@@ -152,10 +152,16 @@ public class Graph {
         return getSuccessorsMulti(n);}
 
     public boolean adjacent(Node u, Node v) {
-        /* Check if `u` or `v` are not in the graph */
-        if (!holdsNode(u) || !holdsNode(v) ) {return false; }/* If either node is missing, they cannot be adjacent */
-        return u.adjacent(v) || v.adjacent(u);/*  Return true if either condition is true*/
+        // Check if `u` or `v` are not in the graph
+        if (!holdsNode(u) || !holdsNode(v)) {
+            return false; // If either node is missing, they cannot be adjacent
+        }
+        // Only check if there is a directed edge from `u` to `v`
+        return u.adjacent(v);
     }
+
+
+
     public boolean adjacent(int u, int v) {
         Node nodeU = getNode(u);
         Node nodeV = getNode(v);
@@ -193,8 +199,8 @@ public class Graph {
     }
 
     public boolean existsEdge(Node u, Node v) {
-        /* we check if nodes are adjacent that means there's edge between them */
-        return adjacent(u,v);
+        boolean exists = adjacent(u, v);
+        return exists;
     }
     public boolean existsEdge(int u, int v) {
         return adjacent(u,v);}
@@ -376,23 +382,40 @@ public class Graph {
 
     //TODO
     public Graph getTransitiveClosure() {
-        Graph transitiveClosure = new Graph();
-        transitiveClosure = this.copy();
-        if (!transitiveClosure.isSimpleGraph()) {
-            transitiveClosure= transitiveClosure.toSimpleGraph();
-        }
-        // Step 2: Compute transitive closure using adjacency list traversal
-        for (Node node : transitiveClosure.getAllNodes()) {
-            for (Node intermediate : transitiveClosure.getSuccessors(node)) {
-                for (Node target : transitiveClosure.getSuccessors(intermediate)) {
-                    if (!node.equals(target) && !transitiveClosure.existsEdge(node, target)) {
-                        transitiveClosure.addEdge(node, target);
+        System.out.println("Starting transitive closure computation...");
+
+        // Step 1: Create a simple copy of the graph to remove multi-edges and self-loops
+        Graph transitiveClosure = this.copy().toSimpleGraph();
+        System.out.println(transitiveClosure.toDotString());
+
+
+        // Step 2: Apply the Roy-Warshall algorithm to compute the transitive closure
+        List<Node> allNodes = new ArrayList<>(transitiveClosure.getAllNodes());
+        for (Node intermediate : allNodes) {
+            System.out.println("Using intermediate node: " + intermediate.getId());
+            for (Node source : allNodes) {
+                for (Node target : allNodes) {
+                    // Check if there is a path from source to target through intermediate
+                    if (transitiveClosure.existsEdge(source, intermediate) && transitiveClosure.existsEdge(intermediate, target)) {
+                        // Add a direct edge from source to target if it doesn't exist and is not a self-loop
+                        if (!transitiveClosure.existsEdge(source, target) && !source.equals(target)) {
+                            transitiveClosure.addEdge(source, target);
+
+                        }
                     }
                 }
             }
         }
+        System.out.println("Transitive closure computation completed.");
         return transitiveClosure;
     }
+
+
+
+
+
+
+
 
     public boolean isMultiGraph() {
         // Iterate over each node in the adjacency list
@@ -572,10 +595,8 @@ public class Graph {
 
     public List<Node> getDFSWithVisitInfo(Map<Node, NodeVisitInfo> nodeVisit, Map<Edge, EdgeVisitType> edgeVisit) {
         if (adjEdList.isEmpty()) return new ArrayList<>();
-
         // Find the node with the lowest ID to start the DFS
         Node startNode = adjEdList.keySet().stream().min(Comparator.comparingInt(Node::getId)).orElse(null);
-
         // Perform DFS starting from the node with the lowest ID
         return getDFSWithVisitInfo(startNode, nodeVisit, edgeVisit);
     }
@@ -712,38 +733,49 @@ public class Graph {
     // 3. Export method to string in DOT format
     public String toDotString() {
         StringBuilder dotBuilder = new StringBuilder("digraph G {\n");
+        dotBuilder.append("    rankdir=LR;\n");  // Set rank direction
 
-        Set<Edge> edgesProcessed = new HashSet<>();
+        // Track all nodes that appear in edges (either as sources or destinations)
+        Set<Node> nodesWithEdges = new HashSet<>();
+        Set<String> edgesProcessed = new HashSet<>();
 
+        // Add each edge in the adjacency list to the DOT representation
         for (Node from : adjEdList.keySet()) {
             for (Edge edge : adjEdList.get(from)) {
                 Node to = edge.to();
-                if (!edgesProcessed.contains(edge)) {
-                    if (edge.getWeight() != null) {
-                        dotBuilder.append("    ")
-                                .append(from.getId())
-                                .append(" -> ")
-                                .append(to.getId())
-                                .append(" [label=")
-                                .append(edge.getWeight())
-                                .append(", len=")
-                                .append(edge.getWeight())
-                                .append("];\n");
-                    } else {
-                        dotBuilder.append("    ")
-                                .append(from.getId())
-                                .append(" -> ")
-                                .append(to.getId())
-                                .append(";\n");
-                    }
-                    edgesProcessed.add(edge);
+                String edgeKey = from.getId() + "->" + to.getId();
+
+                // Avoid processing duplicate edges and self-loops
+                if (!edgesProcessed.contains(edgeKey) && !from.equals(to)) {
+                    dotBuilder.append("    ")
+                            .append(from.getId())
+                            .append(" -> ")
+                            .append(to.getId())
+                            .append(";\n");
+                    edgesProcessed.add(edgeKey);
+                    nodesWithEdges.add(from);
+                    nodesWithEdges.add(to);
                 }
+            }
+        }
+
+        // Add truly isolated nodes (nodes with no incoming or outgoing edges)
+        for (Node node : adjEdList.keySet()) {
+            if (!nodesWithEdges.contains(node)) {
+                dotBuilder.append("    ")
+                        .append(node.getId())
+                        .append(";\n");
             }
         }
 
         dotBuilder.append("}\n");
         return dotBuilder.toString();
     }
+
+
+
+
+
 
     // 4. Export method to file with default ".gv" extension
     public void toDotFile(String filename) {
