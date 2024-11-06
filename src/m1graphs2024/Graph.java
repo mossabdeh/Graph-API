@@ -5,15 +5,27 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/* Graphs are directed by default */
+/**
+ * Represents a directed graph with nodes and edges. Provides functionality to manage nodes and edges,
+ * perform transformations, import/export graphs in DOT format, and traverse the graph.
+ */
 public class Graph {
 
     Map<Node, List<Edge>> adjEdList;
 
 
+    /**
+     * Default constructor for creating an empty graph.
+     */
     public Graph() {/* Empty Constructor */
     }
 
+    /**
+     * Constructs an unweighted graph from a successor array (SA) format.
+     * The integer 0 acts as a separator to indicate new nodes.
+     *
+     * @param SA array of integers representing the successor array
+     */
     /* Constructor using Successor Array SA for unweighted graph
     * to Change the parameter to int... SA for unspecified number of integers
     * */
@@ -54,28 +66,53 @@ public class Graph {
     /* ------------- Methods related to the nodes. ------------- */
 
 
-    /*  Number of nodes of the graph */
+    /**
+     * Returns the number of nodes in the graph.
+     *
+     * @return the number of nodes in the graph
+     */
     public int nbNodes(){
         return this.adjEdList.size();
     }
 
 
+    /**
+     * Checks if a node exists in the graph.
+     *
+     * @param node the node to check
+     * @return true if the node exists, false otherwise
+     */
     public boolean usesNode(Node node) {
         return adjEdList != null && adjEdList.containsKey(node);
     }
 
+    /**
+     * Checks if a node with a given ID exists in the graph.
+     *
+     * @param id the node ID to check
+     * @return true if a node with the given ID exists, false otherwise
+     */
     public boolean usesNode(int id){
         return this.adjEdList.keySet().stream().anyMatch(node -> node.getId() == id);
     }
 
     /**
-     * Checks if node `n` is part of this graph.
+     * Checks if a node is part of this graph.
+     *
+     * @param n the node to check
+     * @return true if the node is part of the graph, false otherwise
      */
     public boolean holdsNode(Node n) {
         // Ensure `n` is not null, belongs to this graph, and is in `adjEdList`
         return n != null && n.getGraph() == this && adjEdList != null && adjEdList.containsKey(n);
     }
 
+    /**
+     * Returns the node with the specified ID.
+     *
+     * @param id the ID of the node
+     * @return the node with the specified ID, or null if it doesn't exist
+     */
 
     public Node getNode(int id) {
         /* Search for a node with the specified id in the adjacency list keys*/
@@ -84,6 +121,13 @@ public class Graph {
                 .findFirst()
                 .orElse(null);
     }
+
+    /**
+     * Adds a node to the graph.
+     *
+     * @param node the node to add
+     * @return true if the node was added, false if it already exists
+     */
     public boolean addNode(Node node) {
         if (adjEdList == null) {
             adjEdList = new HashMap<>(); // Double-check initialization
@@ -95,12 +139,25 @@ public class Graph {
         }
         return false;
     }
+
+    /**
+     * Adds a node with the specified ID to the graph.
+     *
+     * @param id the ID of the node to add
+     * @return true if the node was added, false if it already exists
+     */
     public boolean addNode(int id) {
         if(usesNode(id)){return false;} /* Check if a node with the same id already exists */
         Node n = new Node(id, this);
         return addNode(n);
     }
 
+    /**
+     * Removes a node and all its edges from the graph.
+     *
+     * @param n the node to remove
+     * @return true if the node was removed, false if it didn't exist
+     */
     public boolean removeNode(Node n) {
         if (!holdsNode(n)) {return false;}/* Check if the node exists in the adjacency list*/
         adjEdList.remove(n);/* Remove the node from the adjacency list */
@@ -108,15 +165,32 @@ public class Graph {
             edges.removeIf(edge -> edge.to().equals(n));}
         return true; /* Node and all its incident edges were removed */
     }
+
+    /**
+     * Removes a node by ID and all its edges from the graph.
+     *
+     * @param id the ID of the node to remove
+     * @return true if the node was removed, false if it didn't exist
+     */
     public boolean removeNode(int id) {
         Node n = getNode(id);
         return removeNode(n);
     }
 
+    /**
+     * Retrieves all nodes in the graph.
+     *
+     * @return a list of all nodes in the graph
+     */
     public List<Node> getAllNodes() {
         return new ArrayList<>(this.adjEdList.keySet());
     }
 
+    /**
+     * Retrieves the largest node ID in the graph.
+     *
+     * @return the largest node ID, or Integer.MIN_VALUE if no nodes exist
+     */
     public int largestNodeId() {
         return adjEdList.keySet().stream()
                 .mapToInt(Node::getId)
@@ -124,82 +198,173 @@ public class Graph {
                 .orElse(Integer.MIN_VALUE); // Return Integer.MIN_VALUE if no nodes exist
     }
 
+
+    /**
+     * Retrieves the smallest node ID in the graph.
+     *
+     * @return the smallest node ID, or Integer.MAX_VALUE if no nodes exist
+     */
     public int smallestNodeId() {
         return adjEdList.keySet().stream()
                 .mapToInt(Node::getId)
                 .min()
                 .orElse(Integer.MAX_VALUE); // Return Integer.MAX_VALUE if no nodes exist
     }
+
+
+    /**
+     * Retrieves the successors of a node.
+     *
+     * @param n the node to get successors for
+     * @return a list of successor nodes
+     */
     public List<Node> getSuccessors(Node n) {
         if (!holdsNode(n)) {/* Check if the node exists in the graph */
             return Collections.emptyList();} /* Return an empty list if node `n` is not in the graph */
         return n.getSuccessors(); /* Return Successors */
     }
+
+    /**
+     * Retrieves the successors of a node by ID.
+     *
+     * @param id the ID of the node to get successors for
+     * @return a list of successor nodes
+     */
     public List<Node> getSuccessors(int id) {
         Node n = getNode(id);
         return getSuccessors(n);
     }
-
+    /**
+     * Retrieves a list of successor nodes for a given node, including duplicates if multiple edges
+     * exist between the same nodes.
+     *
+     * @param n the node for which to retrieve successors
+     * @return a list of successor nodes with possible duplicates if multiple edges exist
+     */
     public List<Node> getSuccessorsMulti(Node n) {
-        if (!holdsNode(n)) {/* Check if the node exists in the graph */
-            return Collections.emptyList();}/* Return an empty list if node `n` is not in the graph */
-        return n.getSuccessorsMulti();  /* Return the list with possible duplicates */
+        if (!holdsNode(n)) {
+            return Collections.emptyList(); // Return an empty list if the node is not in the graph
+        }
+        return n.getSuccessorsMulti(); // Return the list of successors with possible duplicates
     }
-
-    public List<Node> getSuccessorsMulti(int id) {
-        Node n = getNode(id);
-        return getSuccessorsMulti(n);}
-
 
     /**
-     * Checks if nodes `u` and `v` are adjacent in the graph, meaning there is a direct edge from `u` to `v`.
+     * Retrieves a list of successor nodes for a node specified by its ID, including duplicates if multiple edges
+     * exist between the same nodes.
+     *
+     * @param id the ID of the node for which to retrieve successors
+     * @return a list of successor nodes with possible duplicates if multiple edges exist
      */
-    public boolean adjacent(Node u, Node v) {
-        // Verify that both nodes are part of this graph
-        if (!holdsNode(u) || !holdsNode(v)) {
-            return false; // Either node is not in the graph
-        }
-        // Check if there is a direct edge from `u` to `v`
-        return u.adjacent(v);
+    public List<Node> getSuccessorsMulti(int id) {
+        Node n = getNode(id);
+        return getSuccessorsMulti(n);
     }
 
+    /**
+     * Checks if two nodes are adjacent in the graph, meaning there is a direct edge from `u` to `v`.
+     *
+     * @param u the source node
+     * @param v the target node
+     * @return true if an edge exists from `u` to `v`, false otherwise
+     */
+    public boolean adjacent(Node u, Node v) {
+        if (!holdsNode(u) || !holdsNode(v)) {
+            return false; // Return false if either node is not in the graph
+        }
+        return u.adjacent(v); // Check for a direct edge from `u` to `v`
+    }
 
-
+    /**
+     * Checks if two nodes specified by their IDs are adjacent in the graph, meaning there is a direct edge from `u` to `v`.
+     *
+     * @param u the ID of the source node
+     * @param v the ID of the target node
+     * @return true if an edge exists from `u` to `v`, false otherwise
+     */
     public boolean adjacent(int u, int v) {
         Node nodeU = getNode(u);
         Node nodeV = getNode(v);
-        return adjacent(nodeU, nodeV);}
-
-    public int inDegree(Node n) {
-       return n.inDegree();
+        return adjacent(nodeU, nodeV);
     }
+
+    /**
+     * Returns the in-degree of a specified node, representing the number of incoming edges.
+     *
+     * @param n the node for which to calculate the in-degree
+     * @return the in-degree of the node
+     */
+    public int inDegree(Node n) {
+        return n.inDegree();
+    }
+
+    /**
+     * Returns the in-degree of a node specified by its ID, representing the number of incoming edges.
+     *
+     * @param id the ID of the node for which to calculate the in-degree
+     * @return the in-degree of the node
+     */
     public int inDegree(int id) {
         Node n = getNode(id);
         return inDegree(n);
     }
 
+    /**
+     * Returns the out-degree of a specified node, representing the number of outgoing edges.
+     *
+     * @param n the node for which to calculate the out-degree
+     * @return the out-degree of the node
+     */
     public int outDegree(Node n) {
-      return n.outDegree();
+        return n.outDegree();
     }
+
+    /**
+     * Returns the out-degree of a node specified by its ID, representing the number of outgoing edges.
+     *
+     * @param id the ID of the node for which to calculate the out-degree
+     * @return the out-degree of the node
+     */
     public int outDegree(int id) {
         Node n = getNode(id);
         return outDegree(n);
     }
+
+    /**
+     * Returns the total degree (sum of in-degree and out-degree) of a specified node.
+     *
+     * @param n the node for which to calculate the degree
+     * @return the total degree of the node
+     */
     public int degree(Node n) {
         return n.degree();
     }
+
+    /**
+     * Returns the total degree (sum of in-degree and out-degree) of a node specified by its ID.
+     *
+     * @param id the ID of the node for which to calculate the degree
+     * @return the total degree of the node
+     */
     public int degree(int id) {
         Node n = getNode(id);
         return degree(n);
     }
 
 
+
     /* ------------- Methods related to the edges. ------------- */
 
 
-    public int nbEdges(){/* directed graph*/
+    /**
+     * Returns the total number of edges in the graph.
+     *
+     * @return the number of edges in the graph, calculated by summing the sizes
+     *         of all edge lists in the adjacency list.
+     */
+    public int nbEdges() {
         return adjEdList.values().stream().mapToInt(List::size).sum();
     }
+
 
     /**
      * Checks if an edge exists between `u` and `v` in this graph.
@@ -213,141 +378,266 @@ public class Graph {
         return adjEdList.get(u).stream().anyMatch(edge -> edge.to().equals(v));
     }
 
+    /**
+     * Checks if an edge exists between two nodes identified by their IDs.
+     *
+     * @param u the ID of the source node.
+     * @param v the ID of the target node.
+     * @return true if there is an edge from node `u` to node `v`, false otherwise.
+     */
     public boolean existsEdge(int u, int v) {
-        return adjacent(u,v);}
+        return adjacent(u, v);
+    }
 
-    /* Overloaded Version Edge reference*/
-    public boolean existsEdge(Edge e){
+    /**
+     * Checks if a specified edge exists in the graph.
+     *
+     * @param e the edge to check.
+     * @return true if the edge exists in the graph, false otherwise.
+     */
+    public boolean existsEdge(Edge e) {
         return adjEdList.get(e.from()).stream().anyMatch(edge -> edge.equals(e));
     }
 
+    /**
+     * Checks if there is more than one edge between two nodes in the graph.
+     *
+     * @param u the source node.
+     * @param v the target node.
+     * @return true if there is more than one edge from node `u` to node `v`, false otherwise.
+     */
     public boolean isMultiEdge(Node u, Node v) {
-        // Ensure that `u` exists in the adjacency list
         if (!adjEdList.containsKey(u)) return false;
 
-        // Count edges from `u` to `v`, stopping early if more than one is found
         long count = adjEdList.get(u).stream()
                 .filter(edge -> edge.to().equals(v))
-                .limit(2) // Stop once we know there's more than one edge
+                .limit(2)
                 .count();
 
         return count > 1;
     }
 
+    /**
+     * Checks if there is more than one edge between two nodes identified by their IDs.
+     *
+     * @param u the ID of the source node.
+     * @param v the ID of the target node.
+     * @return true if there is more than one edge from node `u` to node `v`, false otherwise.
+     */
     public boolean isMultiEdge(int u, int v) {
         Node nodeU = getNode(u);
         Node nodeV = getNode(v);
         return isMultiEdge(nodeU, nodeV);
     }
-    public boolean isMultiEdge(Edge e){
-        return e.isMultiEdge(); }
 
+    /**
+     * Checks if an edge is a multi-edge by examining all edges from its source node.
+     *
+     * @param e the edge to check.
+     * @return true if the edge is a multi-edge, false otherwise.
+     */
+    public boolean isMultiEdge(Edge e) {
+        return e.isMultiEdge();
+    }
 
+    /**
+     * Adds a directed edge between two nodes.
+     *
+     * @param from the source node.
+     * @param to the target node.
+     */
     public void addEdge(Node from, Node to) {
         if (getNode(from.getId()) == null) {
-            addNode(from);}
+            addNode(from);
+        }
         if (getNode(to.getId()) == null) {
-            addNode(to); }
+            addNode(to);
+        }
         adjEdList.get(from).add(new Edge(from, to));
     }
 
+    /**
+     * Adds a directed weighted edge between two nodes.
+     *
+     * @param from the source node.
+     * @param to the target node.
+     * @param weight the weight of the edge.
+     */
     public void addEdge(Node from, Node to, Integer weight) {
         if (getNode(from.getId()) == null) {
-            addNode(from);}
+            addNode(from);
+        }
         if (getNode(to.getId()) == null) {
-            addNode(to); }
+            addNode(to);
+        }
         adjEdList.get(from).add(new Edge(from, to, weight));
     }
 
+    /**
+     * Adds a directed edge between two nodes identified by their IDs.
+     *
+     * @param from the ID of the source node.
+     * @param to the ID of the target node.
+     */
     public void addEdge(int from, int to) {
-        // Ensure both nodes exist in the graph
         if (getNode(from) == null) {
             addNode(from);
         }
         if (getNode(to) == null) {
             addNode(to);
         }
-
-        // Retrieve the nodes after ensuring they exist
-        Node nodeFrom = this.getNode(from);
-        Node nodeTo = this.getNode(to);
-
-        // Now, create the edge, as both nodes are present in the graph
-        Edge edge = new Edge(from, to, this);  // Now safe to call Edge constructor
-
-        // Add the edge to the adjacency list
-        adjEdList.get(nodeFrom).add(edge);
+        Node nodeFrom = getNode(from);
+        Node nodeTo = getNode(to);
+        adjEdList.get(nodeFrom).add(new Edge(from, to, this));
     }
 
-
+    /**
+     * Adds an edge to the graph, ensuring its nodes exist within the graph.
+     *
+     * @param e the edge to add.
+     */
     public void addEdge(Edge e) {
-        // Check if 'from' node exists; if not, add it to the graph
         if (getNode(e.from().getId()) == null) {
             addNode(e.from().getId());
         }
-        // Check if 'to' node exists; if not, add it to the graph
         if (getNode(e.to().getId()) == null) {
             addNode(e.to().getId());
         }
-        // Retrieve the nodes after ensuring they exist
-        Node nodeFrom = this.getNode(e.from().getId());
-        Node nodeTo = this.getNode(e.to().getId());
-
-        // Now that nodes are validated, add the edge directly to adjacency list
-        adjEdList.get(nodeFrom).add(e);
+        adjEdList.get(e.from()).add(e);
     }
 
+    /**
+     * Adds a directed weighted edge between two nodes identified by their IDs.
+     *
+     * @param from the ID of the source node.
+     * @param to the ID of the target node.
+     * @param weight the weight of the edge.
+     */
     public void addEdge(int from, int to, Integer weight) {
         Node nodeFrom = getNode(from);
         Node nodeTo = getNode(to);
         addEdge(nodeFrom, nodeTo, weight);
     }
 
+    /**
+     * Removes a directed edge between two nodes.
+     *
+     * @param from the source node.
+     * @param to the target node.
+     * @return true if the edge was removed, false if it did not exist.
+     */
     public boolean removeEdge(Node from, Node to) {
-        if (existsEdge(from,to)) {
-            return adjEdList.get(from).removeIf(edge -> edge.to().equals(to));}
-       return false;}
+        if (existsEdge(from, to)) {
+            return adjEdList.get(from).removeIf(edge -> edge.to().equals(to));
+        }
+        return false;
+    }
 
+    /**
+     * Removes a directed edge between two nodes identified by their IDs.
+     *
+     * @param from the ID of the source node.
+     * @param to the ID of the target node.
+     * @return true if the edge was removed, false if it did not exist.
+     */
     public boolean removeEdge(int from, int to) {
         Node nodeFrom = getNode(from);
         Node nodeTo = getNode(to);
-        if (nodeFrom == null || nodeTo == null) {
-            return false;
-        }
-        return removeEdge(nodeFrom, nodeTo);}
+        return nodeFrom != null && nodeTo != null && removeEdge(nodeFrom, nodeTo);
+    }
 
-    public boolean removeEdge(Edge e){
+    /**
+     * Removes an edge from the graph.
+     *
+     * @param e the edge to remove.
+     * @return true if the edge was removed, false if it did not exist.
+     */
+    public boolean removeEdge(Edge e) {
         return adjEdList.get(e.from()).removeIf(edge -> edge.equals(e));
     }
 
+    /**
+     * Gets all outgoing edges of a node.
+     *
+     * @param n the node.
+     * @return a list of all outgoing edges.
+     */
     public List<Edge> getOutEdges(Node n) {
         return n.getOutEdges();
     }
+
+    /**
+     * Gets all outgoing edges of a node identified by its ID.
+     *
+     * @param id the ID of the node.
+     * @return a list of all outgoing edges.
+     */
     public List<Edge> getOutEdges(int id) {
         Node n = getNode(id);
-        return getOutEdges(n);}
-
-    public List<Edge> getInEdges(Node n){
-        return n.getInEdges();}
-
-    public List<Edge> getInEdges(int id){
-        Node n = getNode(id);
-        return getInEdges(n);}
-
-    // TODO  case of undirected graph
-    public List<Edge> getIncidentEdges(Node n) {
-       return n.getIncidentEdges();
+        return getOutEdges(n);
     }
+
+    /**
+     * Gets all incoming edges of a node.
+     *
+     * @param n the node.
+     * @return a list of all incoming edges.
+     */
+    public List<Edge> getInEdges(Node n) {
+        return n.getInEdges();
+    }
+
+    /**
+     * Gets all incoming edges of a node identified by its ID.
+     *
+     * @param id the ID of the node.
+     * @return a list of all incoming edges.
+     */
+    public List<Edge> getInEdges(int id) {
+        Node n = getNode(id);
+        return getInEdges(n);
+    }
+
+    /**
+     * Gets all incident edges of a node, including incoming and outgoing edges.
+     *
+     * @param n the node.
+     * @return a list of all incident edges.
+     */
+    public List<Edge> getIncidentEdges(Node n) {
+        return n.getIncidentEdges();
+    }
+
+    /**
+     * Gets all incident edges of a node identified by its ID, including incoming and outgoing edges.
+     *
+     * @param id the ID of the node.
+     * @return a list of all incident edges.
+     */
     public List<Edge> getIncidentEdges(int id) {
         Node n = getNode(id);
-        return getIncidentEdges(n);}
+        return getIncidentEdges(n);
+    }
 
-    public List<Edge> getEdges(Node u, Node v){
+    /**
+     * Retrieves all edges between two nodes.
+     *
+     * @param u the source node.
+     * @param v the target node.
+     * @return a list of all edges from node `u` to node `v`.
+     */
+    public List<Edge> getEdges(Node u, Node v) {
         return adjEdList.get(u).stream()
                 .filter(edge -> edge.to().equals(v))
                 .toList();
     }
-    public List<Edge> getAllEdges(){
+
+    /**
+     * Gets a list of all edges in the graph.
+     *
+     * @return a list containing all edges in the graph.
+     */
+    public List<Edge> getAllEdges() {
         List<Edge> allEdges = new ArrayList<>();
         for (List<Edge> edges : adjEdList.values()) {
             allEdges.addAll(edges);
@@ -382,8 +672,6 @@ public class Graph {
         }
         return adjMatrix;
     }
-
-    //TODO use symmetric edge
     public Graph getReverse() {
         Graph reverseGraph = new Graph();
         // Add all nodes to the reverse graph
@@ -401,7 +689,7 @@ public class Graph {
     }
 
 
-    //TODO
+
     public Graph getTransitiveClosure() {
 
 
@@ -443,14 +731,6 @@ public class Graph {
         return transitiveClosure;
     }
 
-
-
-
-
-
-
-
-
     public boolean isMultiGraph() {
         // Iterate over each node in the adjacency list
         for (Node u : adjEdList.keySet()) {
@@ -485,7 +765,6 @@ public class Graph {
         return false;
     }
 
-    // TODO Check if the method is correct
     public Graph toSimpleGraph() {
         // Create a new Graph instance to hold the simple graph
         Graph simpleGraph = new Graph();
@@ -711,13 +990,13 @@ public class Graph {
     }
 
     // 2. Import method with custom extension
+
     public static Graph fromDotFile(String filename, String extension) {
         Graph graph = new Graph();
         String filePath = "src/m1graphs2024/graphTests/" + filename + extension;
 
-
         Pattern directedPattern = Pattern.compile("(\\d+) -> (\\d+)( \\[label=(\\d+), len=(\\d+)\\])?");
-        Pattern undirectedPattern = Pattern.compile("(\\d+) -- (\\d+)( \\[label=(\\d+), len=(\\d+)\\])?");
+        Pattern isolatedNodePattern = Pattern.compile("^(\\d+);?$"); // Pattern for isolated nodes
 
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String line;
@@ -727,9 +1006,16 @@ public class Graph {
                 if (line.isEmpty() || line.startsWith("//")) continue;
 
                 Matcher directedMatcher = directedPattern.matcher(line);
-                Matcher undirectedMatcher = undirectedPattern.matcher(line);
+                Matcher isolatedNodeMatcher = isolatedNodePattern.matcher(line);
 
-                if (directedMatcher.matches()) {
+                // Handle isolated nodes
+                if (isolatedNodeMatcher.matches()) {
+                    int nodeId = Integer.parseInt(isolatedNodeMatcher.group(1));
+                    Node isolatedNode = new Node(nodeId, graph);
+                    graph.addNode(isolatedNode); // Add isolated node without any edges
+
+                    // Handle directed edges
+                } else if (directedMatcher.matches()) {
                     int fromId = Integer.parseInt(directedMatcher.group(1));
                     int toId = Integer.parseInt(directedMatcher.group(2));
                     Integer weight = directedMatcher.group(4) != null ? Integer.parseInt(directedMatcher.group(4)) : null;
@@ -737,37 +1023,13 @@ public class Graph {
                     Node from = new Node(fromId, graph);
                     Node to = new Node(toId, graph);
 
-                    System.out.println("Adding nodes " + fromId + " and " + toId + " to the graph.");
                     graph.addNode(from);
                     graph.addNode(to);
 
                     if (weight != null) {
-                        System.out.println("Adding directed edge with weight from " + fromId + " to " + toId);
                         graph.addEdge(from, to, weight);
                     } else {
-                        System.out.println("Adding directed edge from " + fromId + " to " + toId);
                         graph.addEdge(from, to);
-                    }
-                } else if (undirectedMatcher.matches()) {
-                    int fromId = Integer.parseInt(undirectedMatcher.group(1));
-                    int toId = Integer.parseInt(undirectedMatcher.group(2));
-                    Integer weight = undirectedMatcher.group(4) != null ? Integer.parseInt(undirectedMatcher.group(4)) : null;
-
-                    Node from = new Node(fromId, graph);
-                    Node to = new Node(toId, graph);
-
-                    System.out.println("Adding nodes " + fromId + " and " + toId + " to the graph.");
-                    graph.addNode(from);
-                    graph.addNode(to);
-
-                    if (weight != null) {
-                        System.out.println("Adding undirected edge with weight between " + fromId + " and " + toId);
-                        graph.addEdge(from, to, weight);
-                        graph.addEdge(to, from, weight);
-                    } else {
-                        System.out.println("Adding undirected edge between " + fromId + " and " + toId);
-                        graph.addEdge(from, to);
-                        graph.addEdge(to, from);
                     }
                 }
             }
@@ -776,56 +1038,80 @@ public class Graph {
             System.err.println("Error reading the DOT file: " + e.getMessage());
         }
 
-        System.out.println("Graph imported successfully with " + graph.adjEdList.size() + " nodes.");
+        // Sort nodes by ID
+        List<Node> sortedNodes = new ArrayList<>(graph.adjEdList.keySet());
+        Collections.sort(sortedNodes, Comparator.comparingInt(Node::getId));
+
+        // Sort edges for each node by the target node's ID
+        for (Node node : sortedNodes) {
+            List<Edge> edges = graph.getOutEdges(node);
+            Collections.sort(edges, Comparator.comparingInt(edge -> edge.to().getId()));
+            graph.adjEdList.put(node, edges); // Ensure sorted edges in adjEdList
+        }
         return graph;
     }
+
+
+
+
+
+
+
 
     // 3. Export method to string in DOT format
     public String toDotString() {
         StringBuilder dotBuilder = new StringBuilder("digraph G {\n");
-        dotBuilder.append("    rankdir=LR;\n");  // Set rank direction
+        dotBuilder.append("    rankdir=LR;\n");
 
-        // Track all nodes that appear in edges (either as sources or destinations)
-        Set<Node> nodesWithEdges = new HashSet<>();
-
-        // Sort nodes by their natural order (assuming Node has Comparable implemented or by ID)
+        // Sort nodes by their natural order
         List<Node> sortedNodes = new ArrayList<>(adjEdList.keySet());
-        Collections.sort(sortedNodes, Comparator.comparingInt(Node::getId));
+        Collections.sort(sortedNodes);
 
-        // Add each edge in the adjacency list to the DOT representation, sorted by edges
-        for (Node from : sortedNodes) {
-            // Get edges and sort them
-            List<Edge> sortedEdges = new ArrayList<>(adjEdList.get(from));
-            Collections.sort(sortedEdges);
-
-            for (Edge edge : sortedEdges) {
-                Node to = edge.to();
-
-                // Include every edge, including self-loops and multiple edges
-                dotBuilder.append("    ")
-                        .append(from.getId())
-                        .append(" -> ")
-                        .append(to.getId())
-                        .append(";\n");
-
-                // Mark nodes as having edges
-                nodesWithEdges.add(from);
-                nodesWithEdges.add(to);
-            }
-        }
-
-        // Add truly isolated nodes (nodes with no incoming or outgoing edges)
+        // Iterate through each node and append edges or the node itself in sorted order
         for (Node node : sortedNodes) {
-            if (!nodesWithEdges.contains(node)) {
-                dotBuilder.append("    ")
-                        .append(node.getId())
-                        .append(";\n");
+            List<Edge> sortedEdges = new ArrayList<>(adjEdList.get(node));
+            Collections.sort(sortedEdges); // Sort edges by target node ID
+
+            if (!sortedEdges.isEmpty()) {
+                // Append each edge for this node
+                for (Edge edge : sortedEdges) {
+                    Node to = edge.to();
+                    dotBuilder.append("    ")
+                            .append(node.getId())
+                            .append(" -> ")
+                            .append(to.getId());
+
+                    // Check if the edge has a weight, and if so, add label and len attributes
+                    if (edge.getWeight() != null) {
+                        int weight = edge.getWeight();
+                        dotBuilder.append(" [label=")
+                                .append(weight)
+                                .append(", len=")
+                                .append(weight)
+                                .append("]");
+                    }
+
+                    dotBuilder.append(";\n");
+                }
+            } else if (getInEdges(node).isEmpty() && getOutEdges(node).isEmpty()) {
+                // Append node as isolated if it has no incoming or outgoing edges
+                dotBuilder.append("    ").append(node.getId()).append(";\n");
             }
         }
 
         dotBuilder.append("}\n");
         return dotBuilder.toString();
     }
+
+
+
+
+
+
+
+
+
+
 
 
 
