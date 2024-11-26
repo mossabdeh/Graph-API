@@ -479,6 +479,77 @@ public class UndirectedGraph extends Graph{
 
 
 
+    @Override
+    public List<Node> getDFS() {
+        List<Node> visited = new ArrayList<>();
+        Stack<Node> stack = new Stack<>();
+
+        for (Node start : adjEdList.keySet()) {
+            if (!visited.contains(start)) {
+                stack.push(start);
+
+                while (!stack.isEmpty()) {
+                    Node current = stack.pop();
+
+                    if (!visited.contains(current)) {
+                        visited.add(current);
+
+                        List<Node> successors = getSuccessors(current);
+                        successors.sort(Comparator.comparingInt(Node::getId).reversed());
+                        for (Node successor : successors) {
+                            if (!visited.contains(successor)) {
+                                stack.push(successor);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return visited;
+    }
+
+
+    @Override
+    public List<Node> getBFS() {
+        if (adjEdList.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        Set<Node> visited = new HashSet<>();
+        List<Node> result = new ArrayList<>();
+        Queue<Node> queue = new LinkedList<>();
+
+        // Iterate through all nodes in the graph to handle disconnected components
+        for (Node start : adjEdList.keySet()) {
+            if (!visited.contains(start)) {
+                queue.add(start);
+
+                while (!queue.isEmpty()) {
+                    Node current = queue.poll();
+
+                    if (visited.add(current)) { // Add to visited if it hasn't been visited
+                        result.add(current); // Add to result
+
+                        // Get successors, sort them, and add unvisited nodes to the queue
+                        List<Node> successors = getSuccessors(current);
+                        successors.sort(Comparator.comparingInt(Node::getId)); // Sort successors by ID
+                        for (Node successor : successors) {
+                            if (!visited.contains(successor)) {
+                                queue.add(successor);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+
+
+
 
 
 }
