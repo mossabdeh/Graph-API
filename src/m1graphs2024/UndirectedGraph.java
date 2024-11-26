@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /* Undirected graphs */
 public class UndirectedGraph extends Graph{
@@ -88,9 +89,23 @@ public class UndirectedGraph extends Graph{
 
     @Override
     public List<Edge> getIncidentEdges(Node n) {
-        // Return all edges connected to the node in an undirected graph
-        return n.getIncidentEdges();
+        // Get all edges in the graph
+        List<Edge> allEdges = getAllEdges();
+        List<Edge> incidentEdges = new ArrayList<>();
+
+        // Iterate over all edges to find those connected to the node
+        for (Edge edge : allEdges) {
+            if (edge.from().equals(n) && edge.to().equals(n)) {
+                // Handle self-loops: Add only once per occurrence
+                incidentEdges.add(edge);
+            } else if (edge.from().equals(n) || edge.to().equals(n)) {
+                // Handle edges where the node is either the source or destination
+                incidentEdges.add(edge);
+            }
+        }
+        return incidentEdges;
     }
+
 
     @Override
     public List<Edge> getIncidentEdges(int id) {
@@ -145,6 +160,13 @@ public class UndirectedGraph extends Graph{
 
 
     @Override
+    public List<Node> getAllNodes() {
+        // Return all nodes present in the adjacency list
+        return new ArrayList<>(this.adjEdList.keySet());
+    }
+
+
+    @Override
     public List<Edge> getInEdges(Node n) {
         return getIncidentEdges(n); // In an undirected graph, in-edges are the same as incident edges
     }
@@ -157,31 +179,22 @@ public class UndirectedGraph extends Graph{
 
     @Override
     public UndirectedGraph getReverse() {
+        // For an undirected graph, the reverse is the same as the original graph
         UndirectedGraph reverseGraph = new UndirectedGraph();
 
         // Add all nodes to the reverse graph
         for (Node node : this.adjEdList.keySet()) {
-            reverseGraph.addNode(new Node(node.getId(), reverseGraph)); // Add the node to the reverse graph
+            reverseGraph.addNode(new Node(node.getId(), reverseGraph)); // Create new Node instances
         }
 
-        // Add edges to the reverse graph
+        // Add all edges to the reverse graph
         for (Edge edge : getAllEdges()) {
-            int fromId = edge.from().getId();
-            int toId = edge.to().getId();
-            Integer weight = edge.getWeight();
-
-            // Add edge in both directions, maintaining the undirected property
-            if (weight != null) {
-                reverseGraph.addEdge(fromId, toId, weight);
-                reverseGraph.addEdge(toId, fromId, weight);
-            } else {
-                reverseGraph.addEdge(fromId, toId);
-                reverseGraph.addEdge(toId, fromId);
-            }
+            reverseGraph.addEdge(edge.from().getId(), edge.to().getId()); // Add edge as-is (no reversing needed)
         }
 
         return reverseGraph;
     }
+
 
 
     @Override
@@ -372,6 +385,66 @@ public class UndirectedGraph extends Graph{
         dotBuilder.append("}\n");
         return dotBuilder.toString();
     }
+
+
+
+    @Override
+    public int[] toSuccessorArray() {
+        List<Integer> successorArray = new ArrayList<>();
+        List<Edge> edges = new ArrayList<>(getAllEdges()); // Get all edges
+
+        // Sort nodes for consistent order
+        List<Node> sortedNodes = new ArrayList<>(adjEdList.keySet());
+        Collections.sort(sortedNodes);
+
+        for (Node node : sortedNodes) {
+            Iterator<Edge> iterator = edges.iterator(); // Use an iterator to safely remove edges
+
+            while (iterator.hasNext()) {
+                Edge edge = iterator.next();
+                if (edge.from().equals(node)) {
+                    // Add the "to" node to the successor array
+                    successorArray.add(edge.to().getId());
+                    iterator.remove(); // Remove the edge after processing
+                }
+            }
+
+            successorArray.add(0); // Add 0 to signify the end of this node's successors
+        }
+
+        return successorArray.stream().mapToInt(Integer::intValue).toArray(); // Convert list to array
+    }
+
+
+
+    @Override
+    public int[][] toAdjMatrix() {
+        int n = nbNodes(); // Total number of nodes
+        int[][] adjMatrix = new int[n][n]; // Initialize adjacency matrix with zeros
+
+        // Get all edges
+        List<Edge> allEdges = getAllEdges();
+
+        for (Edge edge : allEdges) {
+            int from = edge.from().getId() - 1; // Convert to 0-based index
+            int to = edge.to().getId() - 1; // Convert to 0-based index
+
+            if (from == to) {
+                // Self-loop: Increment diagonal entry
+                adjMatrix[from][to] += 1;
+            } else {
+                // Regular edge: Increment both directions for undirected graph
+                adjMatrix[from][to] += 1;
+                adjMatrix[to][from] += 1;
+            }
+        }
+
+        return adjMatrix;
+    }
+
+
+
+
 
 
 
