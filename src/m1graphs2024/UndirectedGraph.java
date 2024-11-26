@@ -116,27 +116,34 @@ public class UndirectedGraph extends Graph{
     @Override
     public List<Node> getSuccessors(Node n) {
         if (!holdsNode(n)) {
-            return Collections.emptyList();
+            return Collections.emptyList(); // Return an empty list if the node is not in the graph
         }
-        // For an undirected graph, successors are simply all connected nodes (neighbors)
-        Set<Node> neighbors = new HashSet<>();
+
+        Set<Node> neighbors = new HashSet<>(); // Use a set to ensure unique neighbors
         boolean hasSelfLoop = false;
 
-        for (Edge edge : getIncidentEdges(n)) {
-            if (edge.isSelfLoop()) {
-                hasSelfLoop = true; // Mark that a self-loop exists
+        // Iterate over all edges
+        for (Edge edge : getAllEdges()) {
+            if (edge.from().equals(n) && edge.to().equals(n)) {
+                hasSelfLoop = true; // Mark self-loop
             }
-            neighbors.add(edge.to());
-            neighbors.add(edge.from());
+            if (edge.from().equals(n)) {
+                neighbors.add(edge.to());
+            }
+            if (edge.to().equals(n)) {
+                neighbors.add(edge.from());
+            }
         }
 
-        // Only remove `n` if there's no self-loop; otherwise, it remains as a successor
-        if (!hasSelfLoop) {
-            neighbors.remove(n);
+        // Include the node itself if it has a self-loop
+        if (hasSelfLoop) {
+            neighbors.add(n);
         }
 
         return new ArrayList<>(neighbors);
     }
+
+
 
 
 
@@ -146,6 +153,32 @@ public class UndirectedGraph extends Graph{
         Node n = getNode(id);
         return getSuccessors(n);
     }
+
+    @Override
+    public List<Node> getSuccessorsMulti(Node n) {
+        if (!holdsNode(n)) {
+            return Collections.emptyList(); // Return an empty list if the node is not in the graph
+        }
+
+        List<Node> successors = new ArrayList<>();
+
+        // Iterate over all edges
+        for (Edge edge : getAllEdges()) {
+            if (edge.from().equals(n)) {
+                // Add the "to" node for edges originating from the given node
+                successors.add(edge.to());
+            } else if (edge.to().equals(n) && !edge.from().equals(n)) {
+                // Add the "from" node only if it's not a self-loop
+                successors.add(edge.from());
+            }
+        }
+
+        return successors;
+    }
+
+
+
+
 
     @Override
     public List<Edge> getAllEdges() {
