@@ -343,6 +343,9 @@ public class UndirectedGraph extends Graph{
         Pattern undirectedPattern = Pattern.compile("(\\d+) -- (\\d+)( \\[label=(\\d+), len=(\\d+)\\])?");
         Pattern isolatedNodePattern = Pattern.compile("^(\\d+);?$");
 
+        // Track seen edges with their attributes to prevent exact duplicates
+        Set<String> seenEdges = new HashSet<>();
+
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String line;
 
@@ -356,27 +359,43 @@ public class UndirectedGraph extends Graph{
                 // Handle isolated nodes
                 if (isolatedNodeMatcher.matches()) {
                     int nodeId = Integer.parseInt(isolatedNodeMatcher.group(1));
-                    Node isolatedNode = new Node(nodeId, graph);
-                    graph.addNode(isolatedNode); // Add isolated node without any edges
-
+                    if (graph.getNode(nodeId) == null) { // Check if the node exists
+                        Node isolatedNode = new Node(nodeId, graph); // Create a new node
+                        graph.addNode(isolatedNode);
+                    }
                 } else if (undirectedMatcher.matches()) { // Handle undirected edges
                     int fromId = Integer.parseInt(undirectedMatcher.group(1));
                     int toId = Integer.parseInt(undirectedMatcher.group(2));
                     Integer weight = undirectedMatcher.group(4) != null ? Integer.parseInt(undirectedMatcher.group(4)) : null;
 
-                    Node from = new Node(fromId, graph);
-                    Node to = new Node(toId, graph);
+                    // Build the edge key (including attributes) to track duplicates
+                    String edgeKey = Math.min(fromId, toId) + "-" + Math.max(fromId, toId) + "-" + (weight != null ? weight : "no-weight");
 
-                    graph.addNode(from);
-                    graph.addNode(to);
+                    // Skip adding the edge only if it's a true duplicate
+                    if (seenEdges.contains(edgeKey)) {
+                        continue;
+                    }
 
-                    // Add the edge in both directions for undirected connectivity
+                    seenEdges.add(edgeKey); // Mark this edge as seen
+
+                    // Fetch or create nodes
+                    Node from = graph.getNode(fromId);
+                    if (from == null) {
+                        from = new Node(fromId, graph); // Create new node if not present
+                        graph.addNode(from);
+                    }
+
+                    Node to = graph.getNode(toId);
+                    if (to == null) {
+                        to = new Node(toId, graph); // Create new node if not present
+                        graph.addNode(to);
+                    }
+
+                    // Add the edge (self-loops and multi-edges are preserved)
                     if (weight != null) {
                         graph.addEdge(from, to, weight);
-                        graph.addEdge(to, from, weight);
                     } else {
                         graph.addEdge(from, to);
-                        graph.addEdge(to, from);
                     }
                 }
             }
@@ -384,19 +403,13 @@ public class UndirectedGraph extends Graph{
             System.err.println("Error reading the DOT file: " + e.getMessage());
         }
 
-        // Sort nodes by ID
-        List<Node> sortedNodes = new ArrayList<>(graph.adjEdList.keySet());
-        Collections.sort(sortedNodes, Comparator.comparingInt(Node::getId));
-
-        // Sort edges for each node by the target node's ID
-        for (Node node : sortedNodes) {
-            List<Edge> edges = graph.getOutEdges(node);
-            Collections.sort(edges, Comparator.comparingInt(edge -> edge.to().getId()));
-            graph.adjEdList.put(node, edges); // Ensure sorted edges in adjEdList
-        }
-
         return graph;
     }
+
+
+
+
+
 
     @Override
     public String toDotString() {
