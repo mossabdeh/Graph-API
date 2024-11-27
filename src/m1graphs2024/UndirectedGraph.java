@@ -232,48 +232,73 @@ public class UndirectedGraph extends Graph{
 
     @Override
     public UndirectedGraph getTransitiveClosure() {
-        // Step 1: Initialize the transitive closure graph and add all nodes
+        // Step 1: Create a new graph to hold the transitive closure
         UndirectedGraph transitiveClosure = new UndirectedGraph();
-        for (Node node : this.getAllNodes()) {
+        transitiveClosure.adjEdList = new HashMap<>(); // Initialize adjEdList to prevent NullPointerException
+
+        // Step 2: Copy all nodes from the original graph to the transitive closure graph
+        for (Node node : adjEdList.keySet()) {
             transitiveClosure.addNode(node.getId());
         }
 
-        // Step 2: Find and connect all nodes within each connected component
-        Set<Node> visited = new HashSet<>();
-        for (Node startNode : this.getAllNodes()) {
-            if (!visited.contains(startNode)) {
-                // Use DFS to explore the component starting from `startNode`
-                List<Node> component = new ArrayList<>();
-                Stack<Node> stack = new Stack<>();
-                stack.push(startNode);
-                visited.add(startNode);
+        // Step 3: Add initial edges from the original graph
+        for (Edge edge : getAllEdges()) {
+            Node from = edge.from();
+            Node to = edge.to();
+            if (!from.equals(to) && !transitiveClosure.existsEdge(from, to)) {
+                transitiveClosure.addEdge(from, to); // Add edge
+                transitiveClosure.addEdge(to, from); // Add reverse for undirected graph
+            }
+        }
 
-                // Explore all nodes in this connected component
-                while (!stack.isEmpty()) {
-                    Node current = stack.pop();
-                    component.add(current);
-
-                    for (Node neighbor : this.getSuccessors(current)) {
-                        if (!visited.contains(neighbor)) {
-                            visited.add(neighbor);
-                            stack.push(neighbor);
+        // Step 4: Compute the transitive closure
+        List<Node> allNodes = new ArrayList<>(transitiveClosure.getAllNodes());
+        for (Node intermediate : allNodes) {
+            for (Node source : allNodes) {
+                for (Node target : allNodes) {
+                    // Check if source is reachable from target through intermediate
+                    if (source != target &&
+                            (transitiveClosure.existsEdge(source, intermediate) &&
+                                    transitiveClosure.existsEdge(intermediate, target))) {
+                        // Add bidirectional edges to ensure symmetry
+                        if (!transitiveClosure.existsEdge(source, target)) {
+                            transitiveClosure.addEdge(source, target);
+                            transitiveClosure.addEdge(target, source); // Add reverse for undirected graph
                         }
-                    }
-                }
-
-                // Step 3: Fully connect all nodes in this component
-                for (int i = 0; i < component.size(); i++) {
-                    for (int j = i + 1; j < component.size(); j++) {
-                        Node node1 = component.get(i);
-                        Node node2 = component.get(j);
-                        transitiveClosure.addEdge(node1, node2);
-                        transitiveClosure.addEdge(node2, node1); // Add bidirectional edge
                     }
                 }
             }
         }
-        return transitiveClosure;
+
+        // Step 5: Remove duplicate edges in the final graph
+        UndirectedGraph resultGraph = new UndirectedGraph();
+        resultGraph.adjEdList = new HashMap<>();
+        for (Node node : transitiveClosure.getAllNodes()) {
+            resultGraph.addNode(node.getId());
+        }
+        Set<String> seenEdges = new HashSet<>();
+        for (Edge edge : transitiveClosure.getAllEdges()) {
+            Node from = edge.from();
+            Node to = edge.to();
+
+            // Ensure that only one direction of an edge is added
+            String edgeKey = Math.min(from.getId(), to.getId()) + "-" + Math.max(from.getId(), to.getId());
+            if (!seenEdges.contains(edgeKey)) {
+                resultGraph.addEdge(from, to);
+                seenEdges.add(edgeKey);
+            }
+        }
+
+        return resultGraph;
     }
+
+
+
+
+
+
+
+
 
 
     @Override
