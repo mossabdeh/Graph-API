@@ -1,3 +1,5 @@
+package m1graphs2024;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;

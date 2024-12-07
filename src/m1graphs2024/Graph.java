@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
  */
 public class Graph {
 
-    Map<Node, List<Edge>> adjEdList;
+    public Map<Node, List<Edge>> adjEdList;
 
 
     /**

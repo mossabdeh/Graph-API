@@ -1,0 +1,8 @@
+graph {
+    rankdir=LR
+    1 -- 2 [label=4, len=4]
+    2 -- 3 [label=6, len=6]
+    3 -- 4 [label=5, len=5]
+    4 -- 1 [label=3, len=3]
+    2 -- 4 [label=2, len=2]
+}
