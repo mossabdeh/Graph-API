@@ -398,7 +398,7 @@ public class ChinesePostman {
 
     public static void main(String[] args) {
         // Step 1: Load the graph using DotReaderWriter
-        String graphFileName = "nonEulerianGraph"; // Replace with your input file name (without extension)
+        String graphFileName = "semiEulerianGraph"; // Replace with your input file name (without extension)
         UndirectedGraph graph = DotReaderWriter.fromDotFile(graphFileName);
 
         if (graph == null || graph.getAllNodes().isEmpty()) {
