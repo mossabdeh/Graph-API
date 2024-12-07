@@ -8,14 +8,10 @@ import java.util.*;
 
 public class ChinesePostman {
     private final UndirectedGraph graph;
-    private final Set<Pair<Integer, Integer>> duplicatedEdges = new HashSet<>();
 
     public ChinesePostman(UndirectedGraph graph) {
         this.graph = graph;
     }
-
-    public Map<Pair<Node, Node>, Integer> distMap;
-    public Map<Pair<Node, Node>, Node> precMap;
 
     // Get odd-degree nodes
     public List<Node> getOddDegreeNodes() {
@@ -71,13 +67,12 @@ public class ChinesePostman {
                 .orElse(null);
     }
 
-    // Compute Eulerian Circuit
+    // Eulerian Circuit
     public List<String> computeEulerianCircuit(Node startNode) {
         Stack<Node> stack = new Stack<>();
         List<String> circuit = new ArrayList<>();
         Map<Edge, Boolean> visitedEdges = new HashMap<>();
 
-        // Initialize all edges as unvisited
         for (Edge edge : graph.getAllEdges()) {
             visitedEdges.put(edge, false);
         }
@@ -112,7 +107,7 @@ public class ChinesePostman {
         return circuit;
     }
 
-    // Compute Eulerian Trail
+    // Eulerian Trail
     public List<String> computeEulerianTrail(Node startNode) {
         Stack<Node> stack = new Stack<>();
         List<String> trail = new ArrayList<>();
@@ -152,83 +147,213 @@ public class ChinesePostman {
         return trail;
     }
 
+    private Edge findEdgeBetweenNodes(Node node1, Node node2) {
+        for (Edge edge : graph.getAllEdges()) {
+            if ((edge.from().equals(node1) && edge.to().equals(node2)) ||
+                    (edge.from().equals(node2) && edge.to().equals(node1))) {
+                return edge;
+            }
+        }
+        return null;
+    }
 
+    // Handle graph type and compute solutions
+    public void handleGraphType() {
+        String graphType = determineGraphType();
+        List<Node> oddNodes = getOddDegreeNodes();
 
-    // Reconstruct shortest path from 'from' to 'to' using predecessor information
-    private List<Node> reconstructPath(Node from, Node to) {
+        if ("Eulerian".equals(graphType)) {
+            System.out.println("Eulerian Circuit:");
+            computeEulerianCircuit(getLowestIdNode());
+        } else if ("Semi-Eulerian".equals(graphType)) {
+            System.out.println("Eulerian Trail:");
+            computeEulerianTrail(getLowestIdNode(oddNodes));
+        } else {
+            System.out.println("Non-Eulerian Graph:");
+            System.out.println("This case requires Chinese Postman logic.");
+            computeChinesePostmanSolution();
+        }
+    }
+
+    // Method to implement the Non-Eulerian solution (Chinese Postman)
+    public void computeChinesePostmanSolution() {
+        List<Node> oddNodes = getOddDegreeNodes();
+
+        // Step 1: Run Floyd-Warshall to get shortest paths
+        int n = graph.getAllNodes().size();
+        // Map node ID to index for matrix representation
+        Map<Integer, Integer> idToIndex = new HashMap<>();
+        List<Node> allNodes = new ArrayList<>(graph.getAllNodes());
+        allNodes.sort(Comparator.comparingInt(Node::getId));
+        for (int i = 0; i < allNodes.size(); i++) {
+            idToIndex.put(allNodes.get(i).getId(), i);
+        }
+
+        // Initialize M and Prec matrices
+        int[][] M = new int[n][n];
+        int[][] Prec = new int[n][n];
+
+        final int INF = Integer.MAX_VALUE / 2; // to avoid overflow
+
+        // Initialization for Floyd-Warshall
+        for (int x = 0; x < n; x++) {
+            for (int y = 0; y < n; y++) {
+                if (x == y) {
+                    M[x][y] = 0;
+                    Prec[x][y] = x;
+                } else {
+                    M[x][y] = INF;
+                    Prec[x][y] = -1;
+                }
+            }
+        }
+
+        for (Edge edge : graph.getAllEdges()) {
+            int i = idToIndex.get(edge.from().getId());
+            int j = idToIndex.get(edge.to().getId());
+            // Since undirected, set both directions
+            if (edge.getWeight() < M[i][j]) {
+                M[i][j] = edge.getWeight();
+                M[j][i] = edge.getWeight();
+                Prec[i][j] = i;
+                Prec[j][i] = j;
+            }
+        }
+
+        // Floyd-Warshall algorithm
+        for (int z = 0; z < n; z++) {
+            for (int x = 0; x < n; x++) {
+                if (M[x][z] == INF) continue;
+                for (int y = 0; y < n; y++) {
+                    if (M[z][y] != INF && M[x][z] + M[z][y] < M[x][y]) {
+                        M[x][y] = M[x][z] + M[z][y];
+                        Prec[x][y] = Prec[z][y];
+                    }
+                }
+            }
+        }
+
+        // Step 2: Generate all pairwise matchings of oddNodes
+        oddNodes.sort(Comparator.comparingInt(Node::getId));
+        List<List<Pair<Node, Node>>> allMatchings = new ArrayList<>();
+        generatePairwiseMatchings(oddNodes, new ArrayList<>(), allMatchings);
+
+        // Step 3: Find minimal-length matching
+        int bestWeight = INF;
+        List<Pair<Node, Node>> bestMatching = null;
+
+        for (List<Pair<Node, Node>> matching : allMatchings) {
+            int weight = 0;
+            for (Pair<Node, Node> pair : matching) {
+                int fromIndex = idToIndex.get(pair.getFirst().getId());
+                int toIndex = idToIndex.get(pair.getSecond().getId());
+                weight += M[fromIndex][toIndex];
+                if (weight >= bestWeight) {
+                    // No need to check further if we already exceed bestWeight
+                    break;
+                }
+            }
+            if (weight < bestWeight) {
+                bestWeight = weight;
+                bestMatching = matching;
+            }
+        }
+
+        // Step 4: Duplicate edges along shortest paths for each pair in best matching
+        // This will make the graph Eulerian
+        if (bestMatching != null) {
+            for (Pair<Node, Node> pair : bestMatching) {
+                // Reconstruct shortest path from pair.first to pair.second using Prec
+                int u = idToIndex.get(pair.getFirst().getId());
+                int v = idToIndex.get(pair.getSecond().getId());
+                List<Node> path = reconstructPath(u, v, Prec, allNodes);
+
+                // Duplicate edges along this path
+                for (int i = 0; i < path.size() - 1; i++) {
+                    Node node1 = path.get(i);
+                    Node node2 = path.get(i + 1);
+                    // Find the edge in the original graph
+                    Edge edge = findEdgeBetweenNodes(node1, node2);
+                    if (edge != null) {
+                        // Add a duplicate edge
+                        graph.addEdge(node1, node2, edge.getWeight());
+                    } else {
+                        // This should not happen since M and Prec are based on existing edges.
+                        // If it does, it indicates something is off in the shortest path reconstruction.
+                        System.err.println("Error: No existing edge found in shortest path, which should not happen.");
+                    }
+                }
+            }
+        }
+
+        // Now graph is Eulerian
+        Node startNode = getLowestIdNode();
+        List<String> circuit = computeEulerianCircuit(startNode);
+        int totalLength = computeTotalLength(graph, circuit);
+
+        // Print results
+        System.out.println("Chinese Circuit: " + circuit);
+        System.out.println("Extra cost: " + bestWeight);
+        System.out.println("Total length: " + totalLength);
+
+        // You can now write the enriched graph to DOT file if needed
+        String outputFileName = "output_nonEulerianGraph";
+        DotReaderWriter.toDotFile(graph, outputFileName, "Non-Eulerian", circuit, totalLength, bestWeight);
+        System.out.println("Enriched DOT file written to: src/chinesePostman/graphTests/" + outputFileName + ".gv");
+    }
+
+    /**
+     * Generate all pairwise matchings of a list of nodes.
+     * This recursive function tries to pick the first node and match it with each other node,
+     * then recurses for the remaining nodes.
+     */
+    private void generatePairwiseMatchings(List<Node> oddNodes,
+                                           List<Pair<Node, Node>> currentMatching,
+                                           List<List<Pair<Node, Node>>> allMatchings) {
+        if (oddNodes.isEmpty()) {
+            allMatchings.add(new ArrayList<>(currentMatching));
+            return;
+        }
+        // Take the first node
+        Node first = oddNodes.get(0);
+        // Try matching it with each other node
+        for (int i = 1; i < oddNodes.size(); i++) {
+            Node second = oddNodes.get(i);
+            // Create pair and recurse
+            List<Node> remaining = new ArrayList<>(oddNodes);
+            remaining.remove(first);
+            remaining.remove(second);
+
+            currentMatching.add(new Pair<>(first, second));
+            generatePairwiseMatchings(remaining, currentMatching, allMatchings);
+            currentMatching.remove(currentMatching.size() - 1);
+        }
+    }
+
+    /**
+     * Reconstruct the shortest path between nodes x and y using the Prec matrix from Floyd-Warshall.
+     * x and y are indices in the node list allNodes.
+     */
+    private List<Node> reconstructPath(int x, int y, int[][] Prec, List<Node> allNodes) {
         List<Node> path = new ArrayList<>();
-
-        if (distMap.get(new Pair<>(from, to)) == Integer.MAX_VALUE) {
-            // No path
-            return path;
+        if (Prec[x][y] == -1) {
+            return path; // no path
         }
-
-        Node current = to;
-        path.add(current);
-
-        while (!current.equals(from)) {
-            Node predecessor = precMap.get(new Pair<>(from, current));
-            if (predecessor == null || predecessor.equals(current)) {
-                throw new IllegalStateException("Invalid predecessor chain from " + from.getId() + " to " + to.getId());
-            }
-            path.add(predecessor);
-            current = predecessor;
+        // Reconstruct path backwards
+        Stack<Integer> stack = new Stack<>();
+        stack.push(y);
+        int current = y;
+        while (current != x) {
+            current = Prec[x][current];
+            stack.push(current);
         }
-
-        Collections.reverse(path);
-
-        // Additional check: no consecutive identical nodes
-        for (int i = 0; i < path.size() - 1; i++) {
-            if (path.get(i).equals(path.get(i + 1))) {
-                throw new IllegalStateException("Consecutive identical nodes in path: " + path);
-            }
+        while (!stack.isEmpty()) {
+            path.add(allNodes.get(stack.pop()));
         }
-
         return path;
     }
 
-
-
-    private List<Edge> duplicateShortestPath(Pair<Node, Node> pair) {
-        List<Edge> addedEdges = new ArrayList<>();
-        Node from = pair.getFirst();
-        Node to = pair.getSecond();
-
-        List<Node> path = reconstructPath(from, to);
-        if (path.isEmpty()) {
-            throw new IllegalStateException("No shortest path found between " + from.getId() + " and " + to.getId());
-        }
-
-        // Duplicate edges along the path
-        for (int i = 0; i < path.size() - 1; i++) {
-            Node current = path.get(i);
-            Node nxt = path.get(i + 1);
-
-            if (current.equals(nxt)) {
-                throw new IllegalStateException("Invalid path step: " + current.getId() + " -> " + nxt.getId());
-            }
-
-            Edge edge = findEdgeBetweenNodes(current, nxt);
-            if (edge == null) {
-                throw new IllegalStateException("No original edge found between " + current.getId() + " and " + nxt.getId());
-            }
-
-            int id1 = current.getId();
-            int id2 = nxt.getId();
-            Pair<Integer, Integer> edgeId = new Pair<>(Math.min(id1, id2), Math.max(id1, id2));
-
-            if (!duplicatedEdges.contains(edgeId)) {
-                graph.addEdge(current, nxt, edge.getWeight());
-                addedEdges.add(edge);
-                duplicatedEdges.add(edgeId);
-            }
-        }
-
-        return addedEdges;
-    }
-
-
-    // Compute the total length of a given circuit
+    // To calculate the total length of the circuit
     private static int computeTotalLength(UndirectedGraph graph, List<String> circuit) {
         int totalLength = 0;
 
@@ -243,6 +368,7 @@ public class ChinesePostman {
             Node toNode = graph.getNode(toId);
 
             if (fromNode != null && toNode != null) {
+                // Find the edge between the nodes
                 Edge edge = graph.getAllEdges().stream()
                         .filter(e -> (e.from().equals(fromNode) && e.to().equals(toNode)) ||
                                 (e.from().equals(toNode) && e.to().equals(fromNode)))
@@ -258,134 +384,9 @@ public class ChinesePostman {
         return totalLength;
     }
 
-
-    private Edge findEdgeBetweenNodes(Node node1, Node node2) {
-        for (Edge edge : graph.getAllEdges()) {
-            if ((edge.from().equals(node1) && edge.to().equals(node2)) ||
-                    (edge.from().equals(node2) && edge.to().equals(node1))) {
-                return edge;
-            }
-        }
-        return null;
-    }
-
-    // Floyd-Warshall
-    public void floydWarshall() {
-        List<Node> nodes = graph.getAllNodes();
-        distMap = new HashMap<>();
-        precMap = new HashMap<>();
-
-        // Initialization
-        for (Node x : nodes) {
-            for (Node y : nodes) {
-                if (x.equals(y)) {
-                    distMap.put(new Pair<>(x, y), 0);
-                    precMap.put(new Pair<>(x, y), null);
-                } else {
-                    Edge edge = findEdgeBetweenNodes(x, y);
-                    if (edge != null) {
-                        distMap.put(new Pair<>(x, y), edge.getWeight());
-                        precMap.put(new Pair<>(x, y), x);
-                    } else {
-                        distMap.put(new Pair<>(x, y), Integer.MAX_VALUE);
-                        precMap.put(new Pair<>(x, y), null);
-                    }
-                }
-            }
-        }
-
-        // Floyd-Warshall core loops
-        for (Node k : nodes) {
-            for (Node i : nodes) {
-                for (Node j : nodes) {
-                    int distIK = distMap.get(new Pair<>(i, k));
-                    int distKJ = distMap.get(new Pair<>(k, j));
-                    int distIJ = distMap.get(new Pair<>(i, j));
-
-                    if (distIK != Integer.MAX_VALUE && distKJ != Integer.MAX_VALUE && distIK + distKJ < distIJ) {
-                        distMap.put(new Pair<>(i, j), distIK + distKJ);
-                        // Update predecessor of j on the best path from i
-                        precMap.put(new Pair<>(i, j), precMap.get(new Pair<>(k, j)));
-                    }
-                }
-            }
-        }
-    }
-
-
-    // Minimal pair matching (optimal)
-    public List<Pair<Node, Node>> findMinimalLengthMatching(List<Node> oddNodes) {
-        List<Pair<Node, Node>> bestMatching = new ArrayList<>();
-        int bestMatchingWeight = Integer.MAX_VALUE;
-
-        List<List<Pair<Node, Node>>> allMatchings = generateAllMatchings(oddNodes);
-        for (List<Pair<Node, Node>> matching : allMatchings) {
-            int matchingWeight = 0;
-            for (Pair<Node, Node> p : matching) {
-                // Get distance from distMap using the global field
-                int dist = distMap.get(new Pair<>(p.getFirst(), p.getSecond()));
-                if (dist == Integer.MAX_VALUE) {
-                    // No path between these two nodes, skip or consider infinite cost
-                    matchingWeight = Integer.MAX_VALUE;
-                    break;
-                } else {
-                    matchingWeight += dist;
-                }
-            }
-
-            if (matchingWeight < bestMatchingWeight) {
-                bestMatchingWeight = matchingWeight;
-                bestMatching = matching;
-            }
-        }
-
-        return bestMatching;
-    }
-
-    private List<List<Pair<Node, Node>>> generateAllMatchings(List<Node> oddNodes) {
-        List<List<Pair<Node, Node>>> matchings = new ArrayList<>();
-        generatePairs(oddNodes, new ArrayList<>(), matchings);
-        return matchings;
-    }
-
-    private void generatePairs(List<Node> nodes, List<Pair<Node, Node>> currentMatching, List<List<Pair<Node, Node>>> matchings) {
-        if (nodes.isEmpty()) {
-            matchings.add(new ArrayList<>(currentMatching));
-            return;
-        }
-
-        Node firstNode = nodes.get(0);
-        for (int i = 1; i < nodes.size(); i++) {
-            Node secondNode = nodes.get(i);
-            currentMatching.add(new Pair<>(firstNode, secondNode));
-
-            List<Node> remainingNodes = new ArrayList<>(nodes);
-            remainingNodes.remove(firstNode);
-            remainingNodes.remove(secondNode);
-
-            generatePairs(remainingNodes, currentMatching, matchings);
-            currentMatching.remove(currentMatching.size() - 1);
-        }
-    }
-
-    // Random Pairwise Matching (Non-Optimal)
-    public List<Pair<Node, Node>> findRandomMatching(List<Node> oddNodes) {
-        List<Pair<Node, Node>> matching = new ArrayList<>();
-        Collections.shuffle(oddNodes);
-
-        while (oddNodes.size() >= 2) {
-            Node first = oddNodes.remove(0);
-            Node second = oddNodes.remove(0);
-            matching.add(new Pair<>(first, second));
-        }
-
-        return matching;
-    }
-
-
-
     public static void main(String[] args) {
-        String graphFileName = "nonEulerianGraph"; // Adjust if needed
+        // Step 1: Load the graph using DotReaderWriter
+        String graphFileName = "nonEulerianGraph"; // Replace with your input file name (without extension)
         UndirectedGraph graph = DotReaderWriter.fromDotFile(graphFileName);
 
         if (graph == null || graph.getAllNodes().isEmpty()) {
@@ -393,69 +394,38 @@ public class ChinesePostman {
             return;
         }
 
+        // Step 2: Create an instance of ChinesePostman
         ChinesePostman chinesePostman = new ChinesePostman(graph);
 
+        // Step 3: Print graph details
         System.out.println("=== Graph Details ===");
         chinesePostman.printGraphDetails();
 
+        // Step 4: Determine graph type and compute solutions
         System.out.println("=== Handling Graph Type ===");
         String graphType = chinesePostman.determineGraphType();
         List<String> circuit = new ArrayList<>();
         int totalLength = 0;
         Integer extraCost = null;
-        List<Edge> addedEdges = new ArrayList<>();
 
-        switch (graphType) {
-            case "Eulerian":
-                System.out.println("Computing Eulerian Circuit...");
-                Node startNodeEulerian = chinesePostman.getLowestIdNode();
-                circuit = chinesePostman.computeEulerianCircuit(startNodeEulerian);
-                totalLength = computeTotalLength(graph, circuit);
-                break;
-
-            case "Semi-Eulerian":
-                System.out.println("Computing Eulerian Trail...");
-                Node startNodeTrail = chinesePostman.getLowestIdNode(chinesePostman.getOddDegreeNodes());
-                circuit = chinesePostman.computeEulerianTrail(startNodeTrail);
-                totalLength = computeTotalLength(graph, circuit);
-                break;
-
-            case "Non-Eulerian":
-                System.out.println("Non-Eulerian Graph: Computing Chinese Circuit...");
-
-                // Run Floyd-Warshall to fill distMap and precMap fields in the ChinesePostman instance
-                chinesePostman.floydWarshall();
-
-                // Get odd degree nodes
-                List<Node> oddNodes = chinesePostman.getOddDegreeNodes();
-
-                // Compute minimal-length matching using distMap (no need to pass distances now)
-                List<Pair<Node, Node>> matching = chinesePostman.findMinimalLengthMatching(oddNodes);
-
-                System.out.println("Pairwise Matching: " + matching);
-
-                // Duplicate shortest paths for each matched pair
-                for (Pair<Node, Node> pair : matching) {
-                    addedEdges.addAll(chinesePostman.duplicateShortestPath(pair));
-                }
-
-                // Now all nodes are of even degree, we can compute the Eulerian circuit
-                Node startNodeChinese = chinesePostman.getLowestIdNode();
-                circuit = chinesePostman.computeEulerianCircuit(startNodeChinese);
-                totalLength = computeTotalLength(graph, circuit);
-                extraCost = addedEdges.stream().mapToInt(Edge::getWeight).sum();
-                break;
-
-
-            default:
-                System.err.println("Error: Unknown graph type.");
-                return;
+        if ("Eulerian".equals(graphType)) {
+            System.out.println("Computing Eulerian Circuit...");
+            Node startNode = chinesePostman.getLowestIdNode();
+            circuit = chinesePostman.computeEulerianCircuit(startNode);
+            totalLength = computeTotalLength(graph, circuit);
+            DotReaderWriter.toDotFile(graph, "output_" + graphFileName, graphType, circuit, totalLength, extraCost);
+        } else if ("Semi-Eulerian".equals(graphType)) {
+            System.out.println("Computing Eulerian Trail...");
+            Node startNode = chinesePostman.getLowestIdNode(chinesePostman.getOddDegreeNodes());
+            circuit = chinesePostman.computeEulerianTrail(startNode);
+            totalLength = computeTotalLength(graph, circuit);
+            DotReaderWriter.toDotFile(graph, "output_" + graphFileName, graphType, circuit, totalLength, extraCost);
+        } else {
+            System.out.println("Non-Eulerian: Applying Chinese Postman...");
+            // Compute Chinese Postman solution integrated within the class
+            chinesePostman.computeChinesePostmanSolution();
+            // The DOT file is written inside computeChinesePostmanSolution
         }
-
-        String outputFileName = "output_" + graphFileName;
-        DotReaderWriter.toDotFile(graph, outputFileName, graphType, circuit, totalLength, extraCost, addedEdges);
-
-        System.out.println("Enriched DOT file written to: src/chinesePostman/graphTests/" + outputFileName + ".gv");
     }
 
 }
