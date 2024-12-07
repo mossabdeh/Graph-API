@@ -396,48 +396,6 @@ public class ChinesePostman {
         return totalLength;
     }
 
-    public static void main(String[] args) {
-        // Step 1: Load the graph using DotReaderWriter
-        String graphFileName = "semiEulerianGraph"; // Replace with your input file name (without extension)
-        UndirectedGraph graph = DotReaderWriter.fromDotFile(graphFileName);
 
-        if (graph == null || graph.getAllNodes().isEmpty()) {
-            System.err.println("Error: Failed to load graph or the graph is empty.");
-            return;
-        }
-
-        // Step 2: Create an instance of ChinesePostman
-        ChinesePostman chinesePostman = new ChinesePostman(graph);
-
-        // Step 3: Print graph details
-        System.out.println("=== Graph Details ===");
-        chinesePostman.printGraphDetails();
-
-        // Step 4: Determine graph type and compute solutions
-        System.out.println("=== Handling Graph Type ===");
-        String graphType = chinesePostman.determineGraphType();
-        List<String> circuit = new ArrayList<>();
-        int totalLength = 0;
-        Integer extraCost = null;
-
-        if ("Eulerian".equals(graphType)) {
-            System.out.println("Computing Eulerian Circuit...");
-            Node startNode = chinesePostman.getLowestIdNode();
-            circuit = chinesePostman.computeEulerianCircuit(startNode);
-            totalLength = computeTotalLength(graph, circuit);
-            DotReaderWriter.toDotFile(graph, "output_" + graphFileName, graphType, circuit, totalLength, extraCost);
-        } else if ("Semi-Eulerian".equals(graphType)) {
-            System.out.println("Computing Eulerian Trail...");
-            Node startNode = chinesePostman.getLowestIdNode(chinesePostman.getOddDegreeNodes());
-            circuit = chinesePostman.computeEulerianTrail(startNode);
-            totalLength = computeTotalLength(graph, circuit);
-            DotReaderWriter.toDotFile(graph, "output_" + graphFileName, graphType, circuit, totalLength, extraCost);
-        } else {
-            System.out.println("Non-Eulerian: Applying Chinese Postman...");
-            // Compute Chinese Postman solution integrated within the class
-            chinesePostman.computeChinesePostmanSolution();
-            // The DOT file is written inside computeChinesePostmanSolution
-        }
-    }
 
 }
