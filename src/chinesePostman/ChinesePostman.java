@@ -8,9 +8,18 @@ import java.util.*;
 
 public class ChinesePostman {
     private final UndirectedGraph graph;
+    // Count of original edges by key
+    private Map<EdgeKey, Integer> originalEdgesCount = new HashMap<>();
+    // Count of newly added edges by key
+    private Map<EdgeKey, Integer> newlyAddedEdgesCount = new HashMap<>();
 
     public ChinesePostman(UndirectedGraph graph) {
         this.graph = graph;
+        // Initialize originalEdgesCount
+        for (Edge e : graph.getAllEdges()) {
+            EdgeKey key = new EdgeKey(e.from().getId(), e.to().getId(), e.getWeight());
+            originalEdgesCount.merge(key, 1, Integer::sum);
+        }
     }
 
     // Get odd-degree nodes
@@ -263,44 +272,47 @@ public class ChinesePostman {
         // This will make the graph Eulerian
         if (bestMatching != null) {
             for (Pair<Node, Node> pair : bestMatching) {
-                // Reconstruct shortest path from pair.first to pair.second using Prec
                 int u = idToIndex.get(pair.getFirst().getId());
                 int v = idToIndex.get(pair.getSecond().getId());
                 List<Node> path = reconstructPath(u, v, Prec, allNodes);
 
-                // Duplicate edges along this path
                 for (int i = 0; i < path.size() - 1; i++) {
                     Node node1 = path.get(i);
                     Node node2 = path.get(i + 1);
-                    // Find the edge in the original graph
-                    Edge edge = findEdgeBetweenNodes(node1, node2);
-                    if (edge != null) {
+                    Edge originalEdge = findEdgeBetweenNodes(node1, node2);
+                    if (originalEdge != null) {
                         // Add a duplicate edge
-                        graph.addEdge(node1, node2, edge.getWeight());
+                        graph.addEdge(node1, node2, originalEdge.getWeight());
+
+                        // Record this newly added edge in newlyAddedEdgesCount
+                        EdgeKey key = new EdgeKey(node1.getId(), node2.getId(), originalEdge.getWeight());
+                        newlyAddedEdgesCount.merge(key, 1, Integer::sum);
                     } else {
-                        // This should not happen since M and Prec are based on existing edges.
-                        // If it does, it indicates something is off in the shortest path reconstruction.
                         System.err.println("Error: No existing edge found in shortest path, which should not happen.");
                     }
                 }
             }
         }
 
-        // Now graph is Eulerian
         Node startNode = getLowestIdNode();
         List<String> circuit = computeEulerianCircuit(startNode);
         int totalLength = computeTotalLength(graph, circuit);
 
-        // Print results
         System.out.println("Chinese Circuit: " + circuit);
         System.out.println("Extra cost: " + bestWeight);
         System.out.println("Total length: " + totalLength);
 
-        // You can now write the enriched graph to DOT file if needed
         String outputFileName = "output_nonEulerianGraph";
-        DotReaderWriter.toDotFile(graph, outputFileName, "Non-Eulerian", circuit, totalLength, bestWeight);
+        // Pass originalEdgesCount and newlyAddedEdgesCount to toDotFile
+        DotReaderWriter.toDotFile(graph, outputFileName, "Non-Eulerian", circuit, totalLength, bestWeight,
+                originalEdgesCount, newlyAddedEdgesCount);
         System.out.println("Enriched DOT file written to: src/chinesePostman/graphTests/" + outputFileName + ".gv");
     }
+
+
+
+    // Now graph is Eulerian
+
 
     /**
      * Generate all pairwise matchings of a list of nodes.

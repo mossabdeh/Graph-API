@@ -5,9 +5,7 @@ import m1graphs2024.Node;
 import m1graphs2024.UndirectedGraph;
 
 import java.io.*;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -85,48 +83,93 @@ public class DotReaderWriter {
         return graph;
     }
 
+    /**
+     * Original toDotFile method for cases where no newly added edges need to be highlighted.
+     */
     public static void toDotFile(UndirectedGraph graph, String outputFilename, String graphType,
                                  List<String> circuit, int totalLength, Integer extraCost) {
+        // For Eulerian/Semi-Eulerian (no duplicates), just call the simplified version
+        toDotFile(graph, outputFilename, graphType, circuit, totalLength, extraCost, null, null);
+    }
+
+    /**
+     * Overloaded method to highlight only the duplicates as red.
+     * @param graph The graph
+     * @param outputFilename Name of output file (without extension)
+     * @param graphType Type of the graph
+     * @param circuit The Eulerian path/circuit
+     * @param totalLength Total length
+     * @param extraCost Extra cost (for Non-Eulerian)
+     * @param originalEdgesCount Map of original edges count
+     * @param newlyAddedEdgesCount Map of new duplicates count
+     */
+    public static void toDotFile(UndirectedGraph graph, String outputFilename, String graphType,
+                                 List<String> circuit, int totalLength, Integer extraCost,
+                                 Map<EdgeKey, Integer> originalEdgesCount,
+                                 Map<EdgeKey, Integer> newlyAddedEdgesCount) {
         String filePath = "src/chinesePostman/graphTests/" + outputFilename + ".gv";
 
+        // If no maps provided (e.g., Eulerian/Semi-Eulerian), just print normal edges
+        boolean highlight = (originalEdgesCount != null && newlyAddedEdgesCount != null);
+
+        // Make copies to avoid modifying the original maps
+        Map<EdgeKey, Integer> originalCountCopy = highlight ? new HashMap<>(originalEdgesCount) : null;
+        Map<EdgeKey, Integer> newCountCopy = highlight ? new HashMap<>(newlyAddedEdgesCount) : null;
+
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
-            // Start the DOT graph structure
             writer.write("graph {\n");
             writer.write("    rankdir=LR\n");
 
-            // Write nodes and edges with their attributes
             for (Node node : graph.getAllNodes()) {
                 for (Edge edge : graph.getOutEdges(node)) {
-                    // Ensure each undirected edge is written only once
                     if (node.getId() < edge.to().getId()) {
+                        EdgeKey key = new EdgeKey(node.getId(), edge.to().getId(), edge.getWeight());
                         writer.write("    " + node.getId() + " -- " + edge.to().getId());
-                        writer.write(" [label=" + edge.getWeight() + ", len=" + edge.getWeight() + "]\n");
+
+                        if (highlight) {
+                            // Check original count first
+                            int oc = originalCountCopy.getOrDefault(key, 0);
+                            if (oc > 0) {
+                                // This is one of the original edges, print normal
+                                writer.write(" [label=" + edge.getWeight() + ", len=" + edge.getWeight() + "]\n");
+                                originalCountCopy.put(key, oc - 1);
+                            } else {
+                                // No original edges left, must be a duplicate if count > 0 in newCount
+                                int nc = newCountCopy.getOrDefault(key, 0);
+                                if (nc > 0) {
+                                    // Print in red
+                                    writer.write(" [label=" + edge.getWeight() + ", len=" + edge.getWeight() + ", color=red, fontcolor=red]\n");
+                                    newCountCopy.put(key, nc - 1);
+                                } else {
+                                    // Should not happen if counts are correct
+                                    // Just print normal if something unexpected occurs
+                                    writer.write(" [label=" + edge.getWeight() + ", len=" + edge.getWeight() + "]\n");
+                                }
+                            }
+                        } else {
+                            // No highlighting, just print normal edge
+                            writer.write(" [label=" + edge.getWeight() + ", len=" + edge.getWeight() + "]\n");
+                        }
                     }
                 }
             }
 
-            // Add additional graph-level information
             writer.write("    label=\"Type: " + graphType + "\\n");
-            if (graphType.equals("Eulerian")) {
+            if ("Eulerian".equals(graphType)) {
                 writer.write("Eulerian circuit: " + circuit + "\\n");
-            } else if (graphType.equals("Semi-Eulerian")) {
+            } else if ("Semi-Eulerian".equals(graphType)) {
                 writer.write("Eulerian trail: " + circuit + "\\n");
-            } else if (graphType.equals("Non-Eulerian")) {
+            } else if ("Non-Eulerian".equals(graphType)) {
                 writer.write("Chinese circuit: " + circuit + "\\n");
                 writer.write("Extra cost: " + extraCost + "\\n");
             }
             writer.write("Total length: " + totalLength + "\"\n");
-
-            // End the DOT graph structure
             writer.write("}\n");
 
             System.out.println("Graph successfully written to " + filePath);
-
         } catch (IOException e) {
             System.err.println("Error writing the DOT file: " + e.getMessage());
         }
     }
-
-
 
 }
