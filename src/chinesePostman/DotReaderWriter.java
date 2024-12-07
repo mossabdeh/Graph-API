@@ -86,7 +86,7 @@ public class DotReaderWriter {
     }
 
     public static void toDotFile(UndirectedGraph graph, String outputFilename, String graphType,
-                                 List<String> circuit, int totalLength, Integer extraCost) {
+                                 List<String> circuit, int totalLength, Integer extraCost, List<Edge> addedEdges) {
         String filePath = "src/chinesePostman/graphTests/" + outputFilename + ".gv";
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
@@ -95,12 +95,21 @@ public class DotReaderWriter {
             writer.write("    rankdir=LR\n");
 
             // Write nodes and edges with their attributes
+            Set<String> writtenEdges = new HashSet<>(); // To ensure edges are not duplicated
             for (Node node : graph.getAllNodes()) {
                 for (Edge edge : graph.getOutEdges(node)) {
                     // Ensure each undirected edge is written only once
-                    if (node.getId() < edge.to().getId()) {
+                    String edgeKey = node.getId() + "--" + edge.to().getId();
+                    String reverseEdgeKey = edge.to().getId() + "--" + node.getId();
+                    if (!writtenEdges.contains(edgeKey) && !writtenEdges.contains(reverseEdgeKey)) {
+                        writtenEdges.add(edgeKey);
+                        writtenEdges.add(reverseEdgeKey);
+
+                        boolean isAddedEdge = addedEdges.contains(edge);
+                        String colorAttributes = isAddedEdge ? ", color=red, fontcolor=red" : "";
+
                         writer.write("    " + node.getId() + " -- " + edge.to().getId());
-                        writer.write(" [label=" + edge.getWeight() + ", len=" + edge.getWeight() + "]\n");
+                        writer.write(" [label=" + edge.getWeight() + ", len=" + edge.getWeight() + colorAttributes + "]\n");
                     }
                 }
             }
@@ -126,6 +135,7 @@ public class DotReaderWriter {
             System.err.println("Error writing the DOT file: " + e.getMessage());
         }
     }
+
 
 
 
