@@ -15,52 +15,90 @@ public class MainMenu {
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        System.out.println("=== Chinese Postman Problem Solver ===");
+
+        printTitle();
 
         while (true) {
             // Display main menu
-            System.out.println("\nMain Menu:");
-            System.out.println("1. List available graph files");
-            System.out.println("2. Load a graph file by name");
-            System.out.println("3. Quit");
-            System.out.print("Enter your choice: ");
-
+            printMainMenuOptions();
             String choice = scanner.nextLine().trim();
 
             switch (choice) {
                 case "1" -> listGraphFiles();
                 case "2" -> loadAndProcessGraph(scanner);
                 case "3" -> {
-                    System.out.println("Exiting the program.");
+                    System.out.println("\nExiting the program. Thank you for using the Chinese Postman Problem Solver!");
                     scanner.close();
                     return;
                 }
-                default -> System.out.println("Invalid choice, please try again.");
+                default -> {
+                    printError("Invalid choice, please try again.");
+                }
             }
         }
     }
+
+    /**
+     * Prints a decorative title using ASCII art.
+     */
+
+    private static void printTitle() {
+        System.out.println("███╗░░░███╗░█████╗░░██████╗░██████╗░█████╗░██████╗░  ██████╗░███████╗██╗░░██╗░█████╗░███╗░░██╗███████╗");
+        System.out.println("████╗░████║██╔══██╗██╔════╝██╔════╝██╔══██╗██╔══██╗  ██╔══██╗██╔════╝██║░░██║██╔══██╗████╗░██║██╔════╝");
+        System.out.println("██╔████╔██║██║░░██║╚█████╗░╚█████╗░███████║██████╦╝  ██║░░██║█████╗░░███████║███████║██╔██╗██║█████╗░░");
+        System.out.println("██║╚██╔╝██║██║░░██║░╚═══██╗░╚═══██╗██╔══██║██╔══██╗  ██║░░██║██╔══╝░░██╔══██║██╔══██║██║╚████║██╔══╝░░");
+        System.out.println("██║░╚═╝░██║╚█████╔╝██████╔╝██████╔╝██║░░██║██████╦╝  ██████╔╝███████╗██║░░██║██║░░██║██║░╚███║███████╗");
+        System.out.println("");
+        System.out.println("   Chinese Postman Problem Solver");
+        System.out.println("=======================================================");
+    }
+
+
+    /**
+     * Prints the main menu options with some decoration.
+     */
+    /**
+     * Prints the main menu options with decorative borders.
+     */
+    private static void printMainMenuOptions() {
+        String border = "----------------------------------------------------";
+        String title =   "|                  MAIN MENU                       |";
+        String option1 = "| 1. List available graph files                    |";
+        String option2 = "| 2. Load a graph file by name                     |";
+        String option3 = "| 3. Quit                                          |";
+
+        System.out.println("\n" + border);
+        System.out.println(title);
+        System.out.println(option1);
+        System.out.println(option2);
+        System.out.println(option3);
+        System.out.println(border);
+        System.out.print("Enter your choice (1-3): ");
+    }
+
 
     /**
      * Lists all available .gv files in the GRAPH_DIR directory.
      */
     private static void listGraphFiles() {
         File dir = new File(GRAPH_DIR);
+        System.out.println("\n---------- AVAILABLE GRAPH FILES ----------");
         if (!dir.exists() || !dir.isDirectory()) {
-            System.out.println("No graph directory found at: " + GRAPH_DIR);
+            printError("No graph directory found at: " + GRAPH_DIR);
             return;
         }
 
         String[] files = dir.list((d, name) -> name.endsWith(".gv"));
         if (files == null || files.length == 0) {
-            System.out.println("No .gv files found in " + GRAPH_DIR);
+            printError("No .gv files found in " + GRAPH_DIR);
             return;
         }
 
-        System.out.println("Available Graph Files:");
         for (String f : files) {
             // Print just the base name without extension
-            System.out.println("- " + f.replace(".gv", ""));
+            System.out.println(" - " + f.replace(".gv", ""));
         }
+        System.out.println("-------------------------------------------");
     }
 
     /**
@@ -68,18 +106,20 @@ public class MainMenu {
      * proceeds to handle graph details and solution.
      */
     private static void loadAndProcessGraph(Scanner scanner) {
+        System.out.println("\n---------- LOAD A GRAPH FILE ----------");
         System.out.print("Enter the graph file name (without extension): ");
         String graphFileName = scanner.nextLine().trim();
 
         UndirectedGraph graph = DotReaderWriter.fromDotFile(graphFileName);
         if (graph == null || graph.getAllNodes().isEmpty()) {
-            System.err.println("Error: Failed to load graph or the graph is empty. Check file name and try again.");
+            printError("Failed to load graph or the graph is empty. Check file name and try again.");
             return;
         }
 
         ChinesePostman chinesePostman = new ChinesePostman(graph);
-        System.out.println("=== Graph Details ===");
+        System.out.println("\n========== GRAPH DETAILS ==========");
         chinesePostman.printGraphDetails();
+        System.out.println("===================================");
 
         // Determine graph type
         String graphType = chinesePostman.determineGraphType();
@@ -96,10 +136,10 @@ public class MainMenu {
      */
     private static void handleGraphOperations(Scanner scanner, UndirectedGraph graph, ChinesePostman chinesePostman, String graphFileName, String graphType) {
         while (true) {
-            System.out.println("\nGraph Operations Menu:");
+            System.out.println("\n--------------- GRAPH OPERATIONS MENU ---------------");
             System.out.println("1. Compute and visualize solution (Eulerian/Chinese Postman)");
             System.out.println("2. Return to Main Menu");
-            System.out.print("Enter your choice: ");
+            System.out.print("Enter your choice (1-2): ");
 
             String choice = scanner.nextLine().trim();
 
@@ -130,7 +170,7 @@ public class MainMenu {
                         System.out.println("1. Enumeration");
                         System.out.println("2. Greedy");
                         System.out.println("3. Random");
-                        System.out.print("Enter your choice: ");
+                        System.out.print("Enter your choice (1-3): ");
                         String algoChoice = scanner.nextLine().trim();
 
                         String matchingAlgorithm;
@@ -139,7 +179,7 @@ public class MainMenu {
                             case "2" -> matchingAlgorithm = "greedy";
                             case "3" -> matchingAlgorithm = "random";
                             default -> {
-                                System.out.println("Invalid choice, defaulting to enumeration.");
+                                printError("Invalid choice, defaulting to enumeration.");
                                 matchingAlgorithm = "enumeration";
                             }
                         }
@@ -149,13 +189,15 @@ public class MainMenu {
                         // The DOT file is written inside computeChinesePostmanSolution
                     }
 
-                    System.out.println("Operation completed. Check the 'src/chinesePostman/graphTests/' directory for the output DOT file.");
+                    System.out.println("\nOperation completed successfully!");
+                    System.out.println("Check the 'src/chinesePostman/graphTests/' directory for the output DOT file.");
                 }
                 case "2" -> {
                     // Return to main menu
+                    System.out.println("Returning to Main Menu...");
                     return;
                 }
-                default -> System.out.println("Invalid choice, please try again.");
+                default -> printError("Invalid choice, please try again.");
             }
         }
     }
@@ -191,6 +233,15 @@ public class MainMenu {
         }
 
         return totalLength;
+    }
+
+    /**
+     * Prints an error message in a standardized format.
+     */
+    private static void printError(String message) {
+        System.out.println("-------------------------------------------------------");
+        System.out.println(" ERROR: " + message);
+        System.out.println("-------------------------------------------------------");
     }
 
 }
