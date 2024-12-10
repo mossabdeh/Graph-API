@@ -166,31 +166,14 @@ public class ChinesePostman {
         return null;
     }
 
-    // Handle graph type and compute solutions
-    public void handleGraphType() {
-        String graphType = determineGraphType();
-        List<Node> oddNodes = getOddDegreeNodes();
 
-        if ("Eulerian".equals(graphType)) {
-            System.out.println("Eulerian Circuit:");
-            computeEulerianCircuit(getLowestIdNode());
-        } else if ("Semi-Eulerian".equals(graphType)) {
-            System.out.println("Eulerian Trail:");
-            computeEulerianTrail(getLowestIdNode(oddNodes));
-        } else {
-            System.out.println("Non-Eulerian Graph:");
-            System.out.println("This case requires Chinese Postman logic.");
-            computeChinesePostmanSolution();
-        }
-    }
 
     // Method to implement the Non-Eulerian solution (Chinese Postman)
-    public void computeChinesePostmanSolution() {
+    public void computeChinesePostmanSolution(String matchingAlgorithm) {
         List<Node> oddNodes = getOddDegreeNodes();
 
         // Step 1: Run Floyd-Warshall to get shortest paths
         int n = graph.getAllNodes().size();
-        // Map node ID to index for matrix representation
         Map<Integer, Integer> idToIndex = new HashMap<>();
         List<Node> allNodes = new ArrayList<>(graph.getAllNodes());
         allNodes.sort(Comparator.comparingInt(Node::getId));
@@ -198,11 +181,10 @@ public class ChinesePostman {
             idToIndex.put(allNodes.get(i).getId(), i);
         }
 
-        // Initialize M and Prec matrices
         int[][] M = new int[n][n];
         int[][] Prec = new int[n][n];
 
-        final int INF = Integer.MAX_VALUE / 2; // to avoid overflow
+        final int INF = Integer.MAX_VALUE / 2;
 
         // Initialization for Floyd-Warshall
         for (int x = 0; x < n; x++) {
@@ -220,7 +202,6 @@ public class ChinesePostman {
         for (Edge edge : graph.getAllEdges()) {
             int i = idToIndex.get(edge.from().getId());
             int j = idToIndex.get(edge.to().getId());
-            // Since undirected, set both directions
             if (edge.getWeight() < M[i][j]) {
                 M[i][j] = edge.getWeight();
                 M[j][i] = edge.getWeight();
@@ -242,34 +223,29 @@ public class ChinesePostman {
             }
         }
 
-        // Step 2: Generate all pairwise matchings of oddNodes
+        // Step 2: Prepare odd nodes
         oddNodes.sort(Comparator.comparingInt(Node::getId));
-        List<List<Pair<Node, Node>>> allMatchings = new ArrayList<>();
-        generatePairwiseMatchings(oddNodes, new ArrayList<>(), allMatchings);
 
-        // Step 3: Find minimal-length matching
-        int bestWeight = INF;
-        List<Pair<Node, Node>> bestMatching = null;
+        // Step 3: Find minimal-length matching using chosen algorithm
+        // Step 3: Find minimal-length matching based on chosen algorithm
+        List<Pair<Node, Node>> bestMatching = switch (matchingAlgorithm.toLowerCase()) {
+            case "enumeration" -> minimalLengthPairwiseMatchingByEnumeration(oddNodes, M, idToIndex);
+            case "greedy" -> minimalLengthPairwiseMatchingByGreedy(oddNodes, M, idToIndex);
+            case "random" -> minimalLengthPairwiseMatchingByRandom(oddNodes, M, idToIndex);
+            default -> {
+                System.err.println("Unknown algorithm. Defaulting to enumeration.");
+                yield minimalLengthPairwiseMatchingByEnumeration(oddNodes, M, idToIndex);
+            }
+        };
 
-        for (List<Pair<Node, Node>> matching : allMatchings) {
-            int weight = 0;
-            for (Pair<Node, Node> pair : matching) {
-                int fromIndex = idToIndex.get(pair.getFirst().getId());
-                int toIndex = idToIndex.get(pair.getSecond().getId());
-                weight += M[fromIndex][toIndex];
-                if (weight >= bestWeight) {
-                    // No need to check further if we already exceed bestWeight
-                    break;
-                }
-            }
-            if (weight < bestWeight) {
-                bestWeight = weight;
-                bestMatching = matching;
-            }
+        int bestWeight = 0;
+        for (Pair<Node, Node> pair : bestMatching) {
+            int fromIndex = idToIndex.get(pair.getFirst().getId());
+            int toIndex = idToIndex.get(pair.getSecond().getId());
+            bestWeight += M[fromIndex][toIndex];
         }
 
         // Step 4: Duplicate edges along shortest paths for each pair in best matching
-        // This will make the graph Eulerian
         if (bestMatching != null) {
             for (Pair<Node, Node> pair : bestMatching) {
                 int u = idToIndex.get(pair.getFirst().getId());
@@ -281,10 +257,7 @@ public class ChinesePostman {
                     Node node2 = path.get(i + 1);
                     Edge originalEdge = findEdgeBetweenNodes(node1, node2);
                     if (originalEdge != null) {
-                        // Add a duplicate edge
                         graph.addEdge(node1, node2, originalEdge.getWeight());
-
-                        // Record this newly added edge in newlyAddedEdgesCount
                         EdgeKey key = new EdgeKey(node1.getId(), node2.getId(), originalEdge.getWeight());
                         newlyAddedEdgesCount.merge(key, 1, Integer::sum);
                     } else {
@@ -300,18 +273,16 @@ public class ChinesePostman {
 
         System.out.println("Chinese Circuit: " + circuit);
         System.out.println("Extra cost: " + bestWeight);
-        System.out.println("Total length: " + totalLength);
+        System.out.println("Total length: " + (totalLength+bestWeight));
 
         String outputFileName = "output_nonEulerianGraph";
-        // Pass originalEdgesCount and newlyAddedEdgesCount to toDotFile
-        DotReaderWriter.toDotFile(graph, outputFileName, "Non-Eulerian", circuit, totalLength, bestWeight,
+        DotReaderWriter.toDotFile(graph, outputFileName, "Non-Eulerian", circuit, totalLength+bestWeight, bestWeight,
                 originalEdgesCount, newlyAddedEdgesCount);
         System.out.println("Enriched DOT file written to: src/chinesePostman/graphTests/" + outputFileName + ".gv");
     }
 
 
 
-    // Now graph is Eulerian
 
 
     /**
@@ -395,6 +366,111 @@ public class ChinesePostman {
 
         return totalLength;
     }
+
+
+
+    /**
+     * Minimal-length Pairwise Matching by Enumeration
+     *
+     * This method uses the enumeration of all possible perfect matchings of odd-degree nodes
+     * to find the one with the minimal total weight.
+     *
+     * @param oddNodes the list of odd-degree nodes
+     * @param M the shortest-distance matrix from Floyd-Warshall
+     * @param idToIndex map from node ID to matrix index
+     * @return the best matching (list of node pairs) with minimal length
+     */
+    private List<Pair<Node, Node>> minimalLengthPairwiseMatchingByEnumeration(List<Node> oddNodes, int[][] M, Map<Integer, Integer> idToIndex) {
+        List<List<Pair<Node, Node>>> allMatchings = new ArrayList<>();
+        generatePairwiseMatchings(oddNodes, new ArrayList<>(), allMatchings);
+
+        int bestWeight = Integer.MAX_VALUE / 2;
+        List<Pair<Node, Node>> bestMatching = null;
+
+        for (List<Pair<Node, Node>> matching : allMatchings) {
+            int weight = 0;
+            for (Pair<Node, Node> pair : matching) {
+                int fromIndex = idToIndex.get(pair.getFirst().getId());
+                int toIndex = idToIndex.get(pair.getSecond().getId());
+                weight += M[fromIndex][toIndex];
+                if (weight >= bestWeight) {
+                    // No need to continue if we already exceed current best
+                    break;
+                }
+            }
+            if (weight < bestWeight) {
+                bestWeight = weight;
+                bestMatching = matching;
+            }
+        }
+
+        return bestMatching != null ? bestMatching : new ArrayList<>();
+    }
+
+
+    /**
+     * A simple greedy approach:
+     * 1. List all pairs of odd nodes and their distances.
+     * 2. Sort pairs by distance ascending.
+     * 3. Iteratively pick the shortest pair whose nodes are not yet matched.
+     *
+     * This will not guarantee minimality but provides a distinct solution from enumeration.
+     */
+    private List<Pair<Node, Node>> minimalLengthPairwiseMatchingByGreedy(List<Node> oddNodes, int[][] M, Map<Integer, Integer> idToIndex) {
+        List<Node> nodes = new ArrayList<>(oddNodes);
+        Set<Node> unmatched = new HashSet<>(nodes);
+
+        // Generate all possible pairs
+        List<Pair<Node, Node>> allPairs = new ArrayList<>();
+        for (int i = 0; i < nodes.size(); i++) {
+            for (int j = i + 1; j < nodes.size(); j++) {
+                Node a = nodes.get(i);
+                Node b = nodes.get(j);
+                int dist = M[idToIndex.get(a.getId())][idToIndex.get(b.getId())];
+                allPairs.add(new Pair<>(a, b));
+            }
+        }
+
+        // Sort pairs by their distance
+        allPairs.sort((p1, p2) -> {
+            int d1 = M[idToIndex.get(p1.getFirst().getId())][idToIndex.get(p1.getSecond().getId())];
+            int d2 = M[idToIndex.get(p2.getFirst().getId())][idToIndex.get(p2.getSecond().getId())];
+            return Integer.compare(d1, d2);
+        });
+
+        // Pick the shortest pair that doesn't conflict
+        List<Pair<Node, Node>> result = new ArrayList<>();
+        for (Pair<Node, Node> pair : allPairs) {
+            if (unmatched.contains(pair.getFirst()) && unmatched.contains(pair.getSecond())) {
+                // Use this pair
+                result.add(pair);
+                unmatched.remove(pair.getFirst());
+                unmatched.remove(pair.getSecond());
+                if (unmatched.isEmpty()) break;
+            }
+        }
+
+        return result;
+    }
+
+
+    /**
+     * Picks a random perfect matching from all possible matchings.
+     * This ensures a non-minimal solution is likely.
+     */
+    private List<Pair<Node, Node>> minimalLengthPairwiseMatchingByRandom(List<Node> oddNodes, int[][] M, Map<Integer, Integer> idToIndex) {
+        List<List<Pair<Node, Node>>> allMatchings = new ArrayList<>();
+        generatePairwiseMatchings(oddNodes, new ArrayList<>(), allMatchings);
+
+        if (allMatchings.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // Randomly pick one matching from all possible matchings (not necessarily minimal)
+        Random rand = new Random();
+        return allMatchings.get(rand.nextInt(allMatchings.size()));
+    }
+
 
 
 

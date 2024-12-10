@@ -115,21 +115,41 @@ public class MainMenu {
                         circuit = chinesePostman.computeEulerianCircuit(startNode);
                         totalLength = computeTotalLength(graph, circuit);
                         DotReaderWriter.toDotFile(graph, "output_" + graphFileName, graphType, circuit, totalLength, extraCost);
+
                     } else if ("Semi-Eulerian".equals(graphType)) {
                         System.out.println("Computing Eulerian Trail...");
                         Node startNode = chinesePostman.getLowestIdNode(chinesePostman.getOddDegreeNodes());
                         circuit = chinesePostman.computeEulerianTrail(startNode);
                         totalLength = computeTotalLength(graph, circuit);
                         DotReaderWriter.toDotFile(graph, "output_" + graphFileName, graphType, circuit, totalLength, extraCost);
+
                     } else {
-                        System.out.println("Non-Eulerian: Applying Chinese Postman...");
-                        // Compute Chinese Postman solution integrated within the class
-                        chinesePostman.computeChinesePostmanSolution();
+                        // Non-Eulerian: Need to choose the matching algorithm
+                        System.out.println("Non-Eulerian Graph detected.");
+                        System.out.println("Choose the minimal-length pairwise matching algorithm:");
+                        System.out.println("1. Enumeration");
+                        System.out.println("2. Greedy");
+                        System.out.println("3. Random");
+                        System.out.print("Enter your choice: ");
+                        String algoChoice = scanner.nextLine().trim();
+
+                        String matchingAlgorithm;
+                        switch (algoChoice) {
+                            case "1" -> matchingAlgorithm = "enumeration";
+                            case "2" -> matchingAlgorithm = "greedy";
+                            case "3" -> matchingAlgorithm = "random";
+                            default -> {
+                                System.out.println("Invalid choice, defaulting to enumeration.");
+                                matchingAlgorithm = "enumeration";
+                            }
+                        }
+
+                        System.out.println("Applying Chinese Postman solution with " + matchingAlgorithm + " algorithm...");
+                        chinesePostman.computeChinesePostmanSolution(matchingAlgorithm);
                         // The DOT file is written inside computeChinesePostmanSolution
                     }
 
                     System.out.println("Operation completed. Check the 'src/chinesePostman/graphTests/' directory for the output DOT file.");
-                    // After computation, we remain in this menu to allow user to return to main menu or choose another operation
                 }
                 case "2" -> {
                     // Return to main menu
