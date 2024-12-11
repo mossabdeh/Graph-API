@@ -5,11 +5,14 @@ import m1graphs2024.UndirectedGraph;
 import m1graphs2024.Node;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 
 public class ChinesePostman {
     private final UndirectedGraph graph;
     // Count of original edges by key
-    private Map<EdgeKey, Integer> originalEdgesCount = new HashMap<>();
+    private final Map<EdgeKey, Integer> originalEdgesCount = new HashMap<>();
     // Count of newly added edges by key
     private Map<EdgeKey, Integer> newlyAddedEdgesCount = new HashMap<>();
 
@@ -70,6 +73,7 @@ public class ChinesePostman {
                 .orElse(null);
     }
 
+    //Overload Version
     public Node getLowestIdNode(List<Node> nodes) {
         return nodes.stream()
                 .min(Comparator.comparingInt(Node::getId))
@@ -77,11 +81,26 @@ public class ChinesePostman {
     }
 
     // Eulerian Circuit
-    public List<String> computeEulerianCircuit(Node startNode) {
+    /**
+     * Computes the Eulerian circuit starting from the given node using a separate method.
+     * This method ensures that all edges are traversed exactly once.
+     *
+     * @param startNode The node to start the Eulerian circuit from.
+     * @return A list of edge descriptions representing the Eulerian circuit.
+     */
+    /**
+     * Computes the Eulerian circuit starting from the given node using an iterative Hierholzer's algorithm.
+     * This method ensures that all edges are traversed exactly once.
+     *
+     * @param startNode The node to start the Eulerian circuit from.
+     * @return A list of edge descriptions representing the Eulerian circuit.
+     */
+    public List<String> computeEulerianCircuitSeparate(Node startNode) {
+        List<String> circuit = new LinkedList<>();
         Stack<Node> stack = new Stack<>();
-        List<String> circuit = new ArrayList<>();
         Map<Edge, Boolean> visitedEdges = new HashMap<>();
 
+        // Initialize all edges as unvisited
         for (Edge edge : graph.getAllEdges()) {
             visitedEdges.put(edge, false);
         }
@@ -90,31 +109,125 @@ public class ChinesePostman {
 
         while (!stack.isEmpty()) {
             Node current = stack.peek();
-            boolean foundUnvisitedEdge = false;
+            boolean hasUnvisitedEdge = false;
 
             for (Edge edge : graph.getOutEdges(current)) {
                 if (!visitedEdges.get(edge)) {
+                    // Mark the edge as visited
                     visitedEdges.put(edge, true);
-                    stack.push(edge.to().equals(current) ? edge.from() : edge.to());
-                    foundUnvisitedEdge = true;
+                    // Determine the next node
+                    Node next = edge.from().equals(current) ? edge.to() : edge.from();
+                    stack.push(next);
+                    hasUnvisitedEdge = true;
                     break;
                 }
             }
 
-            if (!foundUnvisitedEdge) {
-                Node poppedNode = stack.pop();
+            if (!hasUnvisitedEdge) {
+                Node node = stack.pop();
                 if (!stack.isEmpty()) {
-                    Node previousNode = stack.peek();
-                    Edge edge = findEdgeBetweenNodes(poppedNode, previousNode);
+                    Node prev = stack.peek();
+                    Edge edge = findEdgeBetweenNodes(node, prev);
                     if (edge != null) {
-                        circuit.add(poppedNode.getId() + "-(" + edge.getWeight() + ")-" + previousNode.getId());
+                        circuit.add(node.getId() + "-(" + edge.getWeight() + ")-" + prev.getId());
+                    } else {
+                        System.err.println("Error: Edge not found between " + node.getId() + " and " + prev.getId());
                     }
                 }
             }
         }
 
+
         return circuit;
     }
+
+
+
+    /**
+     * Computes the Eulerian circuit starting from the given node.
+     * Assumes that the graph is Eulerian (all nodes have even degree).
+     *
+     * @param startNode The node to start the Eulerian circuit from.
+     * @return A list of edge descriptions representing the Eulerian circuit.
+     */
+    public List<String> computeEulerianCircuit(Node startNode) {
+        List<String> circuit = new LinkedList<>();
+        // Clone the adjacency list to avoid modifying the original graph
+        Map<Node, List<Edge>> adj = new HashMap<>();
+        for (Node node : graph.getAllNodes()) {
+            adj.put(node, new ArrayList<>(graph.getOutEdges(node)));
+        }
+
+        traverse(startNode, circuit, adj);
+        Collections.reverse(circuit); // Reverse to get the correct order
+        return circuit;
+    }
+
+    /**
+     * Recursively traverses the graph to build the Eulerian circuit.
+     *
+     * @param currentNode The current node being traversed.
+     * @param circuit     The list to append the traversed edges.
+     * @param adj         The adjacency list map.
+     */
+    private void traverse(Node currentNode, List<String> circuit, Map<Node, List<Edge>> adj) {
+        List<Edge> edges = adj.get(currentNode);
+        while (edges != null && !edges.isEmpty()) {
+            Edge edge = edges.remove(0);
+            Node next = edge.from().equals(currentNode) ? edge.to() : edge.from();
+            // Remove the edge from the next node's adjacency list
+            adj.get(next).remove(edge);
+            traverse(next, circuit, adj);
+            // Add the traversed edge to the circuit
+            circuit.add(currentNode.getId() + "-(" + edge.getWeight() + ")-" + next.getId());
+        }
+    }
+
+
+    // Inside the ChinesePostman.java class
+
+
+    /**
+     * Calculates the total length of the circuit by summing the weights of all traversed edges.
+     *
+     * @param graph   The undirected graph.
+     * @param circuit The list of traversed edge descriptions.
+     * @return The total length of the circuit.
+     */
+    private static int computeTotalLength(UndirectedGraph graph, List<String> circuit) {
+        int totalLength = 0;
+
+        // Create a multiset (map with counts) to handle multiple identical edges
+        Map<String, Integer> edgeUsage = new HashMap<>();
+
+        for (String edgeDescription : circuit) {
+            String key = edgeDescription;
+            edgeUsage.put(key, edgeUsage.getOrDefault(key, 0) + 1);
+        }
+
+        for (Map.Entry<String, Integer> entry : edgeUsage.entrySet()) {
+            String edgeStr = entry.getKey();
+            int count = entry.getValue();
+
+            // Parse the edge string to extract node IDs and weight
+            Pattern pattern = Pattern.compile("(\\d+)-\\((\\d+)\\)-\\d+");
+            Matcher matcher = pattern.matcher(edgeStr);
+            if (matcher.find()) {
+                int weight = Integer.parseInt(matcher.group(2));
+                totalLength += weight * count;
+            }
+        }
+
+        return totalLength;
+    }
+
+
+
+
+
+
+
+
 
     // Eulerian Trail
     public List<String> computeEulerianTrail(Node startNode) {
@@ -168,7 +281,10 @@ public class ChinesePostman {
 
 
 
-    // Method to implement the Non-Eulerian solution (Chinese Postman)
+
+    /**
+     * Method to implement the Non-Eulerian solution (Chinese Postman)
+     */
     public void computeChinesePostmanSolution(String matchingAlgorithm) {
         List<Node> oddNodes = getOddDegreeNodes();
 
@@ -226,7 +342,6 @@ public class ChinesePostman {
         // Step 2: Prepare odd nodes
         oddNodes.sort(Comparator.comparingInt(Node::getId));
 
-        // Step 3: Find minimal-length matching using chosen algorithm
         // Step 3: Find minimal-length matching based on chosen algorithm
         List<Pair<Node, Node>> bestMatching = switch (matchingAlgorithm.toLowerCase()) {
             case "enumeration" -> minimalLengthPairwiseMatchingByEnumeration(oddNodes, M, idToIndex);
@@ -257,7 +372,10 @@ public class ChinesePostman {
                     Node node2 = path.get(i + 1);
                     Edge originalEdge = findEdgeBetweenNodes(node1, node2);
                     if (originalEdge != null) {
+                        // Add a duplicate edge
                         graph.addEdge(node1, node2, originalEdge.getWeight());
+
+                        // Record this newly added edge in newlyAddedEdgesCount
                         EdgeKey key = new EdgeKey(node1.getId(), node2.getId(), originalEdge.getWeight());
                         newlyAddedEdgesCount.merge(key, 1, Integer::sum);
                     } else {
@@ -267,19 +385,21 @@ public class ChinesePostman {
             }
         }
 
+        // Step 5: Compute Eulerian circuit on the augmented graph
         Node startNode = getLowestIdNode();
         List<String> circuit = computeEulerianCircuit(startNode);
         int totalLength = computeTotalLength(graph, circuit);
 
         System.out.println("Chinese Circuit: " + circuit);
         System.out.println("Extra cost: " + bestWeight);
-        System.out.println("Total length: " + (totalLength+bestWeight));
+        System.out.println("Total length: " + (totalLength));
 
-        String outputFileName = "output_nonEulerianGraph";
-        DotReaderWriter.toDotFile(graph, outputFileName, "Non-Eulerian", circuit, totalLength+bestWeight, bestWeight,
+        String outputFileName = "output_nonEulerianGraph_" + matchingAlgorithm;
+        DotReaderWriter.toDotFile(graph, outputFileName, "Non-Eulerian", circuit, totalLength, bestWeight,
                 originalEdgesCount, newlyAddedEdgesCount);
         System.out.println("Enriched DOT file written to: src/chinesePostman/graphTests/" + outputFileName + ".gv");
     }
+
 
 
 
@@ -337,35 +457,7 @@ public class ChinesePostman {
     }
 
     // To calculate the total length of the circuit
-    private static int computeTotalLength(UndirectedGraph graph, List<String> circuit) {
-        int totalLength = 0;
 
-        for (String edgeDescription : circuit) {
-            String[] parts = edgeDescription.split("-\\(|\\)-");
-            if (parts.length < 3) continue;
-
-            int fromId = Integer.parseInt(parts[0]);
-            int toId = Integer.parseInt(parts[2]);
-
-            Node fromNode = graph.getNode(fromId);
-            Node toNode = graph.getNode(toId);
-
-            if (fromNode != null && toNode != null) {
-                // Find the edge between the nodes
-                Edge edge = graph.getAllEdges().stream()
-                        .filter(e -> (e.from().equals(fromNode) && e.to().equals(toNode)) ||
-                                (e.from().equals(toNode) && e.to().equals(fromNode)))
-                        .findFirst()
-                        .orElse(null);
-
-                if (edge != null) {
-                    totalLength += edge.getWeight();
-                }
-            }
-        }
-
-        return totalLength;
-    }
 
 
 
@@ -416,33 +508,33 @@ public class ChinesePostman {
      *
      * This will not guarantee minimality but provides a distinct solution from enumeration.
      */
+    /**
+     * Minimal-length Pairwise Matching by Greedy Algorithm
+     * At each step, select the pair with the smallest distance and remove them from the pool.
+     */
     private List<Pair<Node, Node>> minimalLengthPairwiseMatchingByGreedy(List<Node> oddNodes, int[][] M, Map<Integer, Integer> idToIndex) {
         List<Node> nodes = new ArrayList<>(oddNodes);
-        Set<Node> unmatched = new HashSet<>(nodes);
+        List<Pair<Node, Node>> result = new ArrayList<>();
 
-        // Generate all possible pairs
-        List<Pair<Node, Node>> allPairs = new ArrayList<>();
-        for (int i = 0; i < nodes.size(); i++) {
-            for (int j = i + 1; j < nodes.size(); j++) {
-                Node a = nodes.get(i);
-                Node b = nodes.get(j);
-                int dist = M[idToIndex.get(a.getId())][idToIndex.get(b.getId())];
-                allPairs.add(new Pair<>(a, b));
+        // Generate all possible pairs with their distances
+        List<PairWithDistance> allPairs = new ArrayList<>();
+        for (int i = 0; i < oddNodes.size(); i++) {
+            for (int j = i + 1; j < oddNodes.size(); j++) {
+                Node a = oddNodes.get(i);
+                Node b = oddNodes.get(j);
+                int distance = M[idToIndex.get(a.getId())][idToIndex.get(b.getId())];
+                allPairs.add(new PairWithDistance(new Pair<>(a, b), distance));
             }
         }
 
-        // Sort pairs by their distance
-        allPairs.sort((p1, p2) -> {
-            int d1 = M[idToIndex.get(p1.getFirst().getId())][idToIndex.get(p1.getSecond().getId())];
-            int d2 = M[idToIndex.get(p2.getFirst().getId())][idToIndex.get(p2.getSecond().getId())];
-            return Integer.compare(d1, d2);
-        });
+        // Sort all pairs by distance ascending
+        allPairs.sort(Comparator.comparingInt(PairWithDistance::getDistance));
 
-        // Pick the shortest pair that doesn't conflict
-        List<Pair<Node, Node>> result = new ArrayList<>();
-        for (Pair<Node, Node> pair : allPairs) {
+        Set<Node> unmatched = new HashSet<>(oddNodes);
+
+        for (PairWithDistance pwd : allPairs) {
+            Pair<Node, Node> pair = pwd.getPair();
             if (unmatched.contains(pair.getFirst()) && unmatched.contains(pair.getSecond())) {
-                // Use this pair
                 result.add(pair);
                 unmatched.remove(pair.getFirst());
                 unmatched.remove(pair.getSecond());
@@ -454,9 +546,14 @@ public class ChinesePostman {
     }
 
 
+
     /**
      * Picks a random perfect matching from all possible matchings.
      * This ensures a non-minimal solution is likely.
+     */
+    /**
+     * Minimal-length Pairwise Matching by Random Algorithm
+     * Enumerate all possible matchings and pick one at random.
      */
     private List<Pair<Node, Node>> minimalLengthPairwiseMatchingByRandom(List<Node> oddNodes, int[][] M, Map<Integer, Integer> idToIndex) {
         List<List<Pair<Node, Node>>> allMatchings = new ArrayList<>();
@@ -466,12 +563,33 @@ public class ChinesePostman {
             return new ArrayList<>();
         }
 
-        // Randomly pick one matching from all possible matchings (not necessarily minimal)
+        // Pick a random matching
         Random rand = new Random();
         return allMatchings.get(rand.nextInt(allMatchings.size()));
     }
 
 
+
+    /**
+     * Inner class to represent a pair of nodes with their distance.
+     */
+    private static class PairWithDistance {
+        private final Pair<Node, Node> pair;
+        private final int distance;
+
+        public PairWithDistance(Pair<Node, Node> pair, int distance) {
+            this.pair = pair;
+            this.distance = distance;
+        }
+
+        public Pair<Node, Node> getPair() {
+            return pair;
+        }
+
+        public int getDistance() {
+            return distance;
+        }
+    }
 
 
 }

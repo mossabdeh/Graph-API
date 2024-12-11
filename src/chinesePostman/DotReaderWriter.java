@@ -93,7 +93,7 @@ public class DotReaderWriter {
     }
 
     /**
-     * Overloaded method to highlight only the duplicates as red.
+     * Overloaded method to highlight both original and duplicated edges as red.
      * @param graph The graph
      * @param outputFilename Name of output file (without extension)
      * @param graphType Type of the graph
@@ -120,50 +120,57 @@ public class DotReaderWriter {
             writer.write("graph {\n");
             writer.write("    rankdir=LR\n");
 
-            for (Node node : graph.getAllNodes()) {
-                for (Edge edge : graph.getOutEdges(node)) {
-                    if (node.getId() < edge.to().getId()) {
-                        EdgeKey key = new EdgeKey(node.getId(), edge.to().getId(), edge.getWeight());
-                        writer.write("    " + node.getId() + " -- " + edge.to().getId());
+            for (Edge edge : graph.getAllEdges()) {
+                int fromId = edge.from().getId();
+                int toId = edge.to().getId();
+                int weight = edge.getWeight();
 
-                        if (highlight) {
-                            // Check original count first
-                            int oc = originalCountCopy.getOrDefault(key, 0);
-                            if (oc > 0) {
-                                // This is one of the original edges, print normal
-                                writer.write(" [label=" + edge.getWeight() + ", len=" + edge.getWeight() + "]\n");
-                                originalCountCopy.put(key, oc - 1);
-                            } else {
-                                // No original edges left, must be a duplicate if count > 0 in newCount
-                                int nc = newCountCopy.getOrDefault(key, 0);
-                                if (nc > 0) {
-                                    // Print in red
-                                    writer.write(" [label=" + edge.getWeight() + ", len=" + edge.getWeight() + ", color=red, fontcolor=red]\n");
-                                    newCountCopy.put(key, nc - 1);
-                                } else {
-                                    // Should not happen if counts are correct
-                                    // Just print normal if something unexpected occurs
-                                    writer.write(" [label=" + edge.getWeight() + ", len=" + edge.getWeight() + "]\n");
-                                }
-                            }
+                String edgeLine = "    " + fromId + " -- " + toId;
+
+                if (highlight) {
+                    EdgeKey key = new EdgeKey(fromId, toId, weight);
+
+                    // Check original count first
+                    int oc = originalCountCopy.getOrDefault(key, 0);
+                    if (oc > 0) {
+                        // This is one of the original edges, print normal
+                        edgeLine += " [label=" + weight + ", len=" + weight + "]\n";
+                        originalCountCopy.put(key, oc - 1);
+                    } else {
+                        // No original edges left, must be a duplicate if count > 0 in newCount
+                        int nc = newCountCopy.getOrDefault(key, 0);
+                        if (nc > 0) {
+                            // Print in red
+                            edgeLine += " [label=" + weight + ", len=" + weight + ", color=red, fontcolor=red]\n";
+                            newCountCopy.put(key, nc - 1);
                         } else {
-                            // No highlighting, just print normal edge
-                            writer.write(" [label=" + edge.getWeight() + ", len=" + edge.getWeight() + "]\n");
+                            // Should not happen if counts are correct
+                            // Just print normal if something unexpected occurs
+                            edgeLine += " [label=" + weight + ", len=" + weight + "]\n";
                         }
                     }
+                } else {
+                    // No highlighting, just print normal edge
+                    edgeLine += " [label=" + weight + ", len=" + weight + "]\n";
                 }
+
+                writer.write(edgeLine);
             }
 
-            writer.write("    label=\"Type: " + graphType + "\\n");
+            // Construct the label based on graph type
+            StringBuilder labelBuilder = new StringBuilder();
+            labelBuilder.append("Type: ").append(graphType).append("\\n");
             if ("Eulerian".equals(graphType)) {
-                writer.write("Eulerian circuit: " + circuit + "\\n");
+                labelBuilder.append("Eulerian circuit: ").append(circuit).append("\\n");
             } else if ("Semi-Eulerian".equals(graphType)) {
-                writer.write("Eulerian trail: " + circuit + "\\n");
+                labelBuilder.append("Eulerian trail: ").append(circuit).append("\\n");
             } else if ("Non-Eulerian".equals(graphType)) {
-                writer.write("Chinese circuit: " + circuit + "\\n");
-                writer.write("Extra cost: " + extraCost + "\\n");
+                labelBuilder.append("Chinese circuit: ").append(circuit).append("\\n");
+                labelBuilder.append("Extra cost: ").append(extraCost).append("\\n");
             }
-            writer.write("Total length: " + totalLength + "\"\n");
+            labelBuilder.append("Total length: ").append(totalLength);
+
+            writer.write("    label=\"" + labelBuilder.toString() + "\"\n");
             writer.write("}\n");
 
             System.out.println("Graph successfully written to " + filePath);
@@ -171,5 +178,8 @@ public class DotReaderWriter {
             System.err.println("Error writing the DOT file: " + e.getMessage());
         }
     }
+
+
+
 
 }

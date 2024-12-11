@@ -7,6 +7,7 @@ public class EdgeKey {
     private final int nodeB;
     private final int weight;
 
+    //ensure that each undirected edge is stored only once
     public EdgeKey(int id1, int id2, int weight) {
         // Ensure nodeA < nodeB for uniqueness
         this.nodeA = Math.min(id1, id2);

@@ -1,6 +1,6 @@
 package chinesePostman;
 
-import m1graphs2024.Edge;
+
 import m1graphs2024.Node;
 import m1graphs2024.UndirectedGraph;
 
@@ -8,6 +8,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+
 
 public class MainMenu {
 
@@ -41,7 +42,6 @@ public class MainMenu {
     /**
      * Prints a decorative title using ASCII art.
      */
-
     private static void printTitle() {
         System.out.println("███╗░░░███╗░█████╗░░██████╗░██████╗░█████╗░██████╗░  ██████╗░███████╗██╗░░██╗░█████╗░███╗░░██╗███████╗");
         System.out.println("████╗░████║██╔══██╗██╔════╝██╔════╝██╔══██╗██╔══██╗  ██╔══██╗██╔════╝██║░░██║██╔══██╗████╗░██║██╔════╝");
@@ -53,10 +53,6 @@ public class MainMenu {
         System.out.println("=======================================================");
     }
 
-
-    /**
-     * Prints the main menu options with some decoration.
-     */
     /**
      * Prints the main menu options with decorative borders.
      */
@@ -75,7 +71,6 @@ public class MainMenu {
         System.out.println(border);
         System.out.print("Enter your choice (1-3): ");
     }
-
 
     /**
      * Lists all available .gv files in the GRAPH_DIR directory.
@@ -147,24 +142,22 @@ public class MainMenu {
                 case "1" -> {
                     List<String> circuit = new ArrayList<>();
                     int totalLength = 0;
-                    Integer extraCost = null;
 
                     if ("Eulerian".equals(graphType)) {
                         System.out.println("Computing Eulerian Circuit...");
                         Node startNode = chinesePostman.getLowestIdNode();
-                        circuit = chinesePostman.computeEulerianCircuit(startNode);
-                        totalLength = computeTotalLength(graph, circuit);
-                        DotReaderWriter.toDotFile(graph, "output_" + graphFileName, graphType, circuit, totalLength, extraCost);
-
+                        circuit = chinesePostman.computeEulerianCircuitSeparate(startNode);
+                        totalLength = computeTotalLength( circuit);
+                        DotReaderWriter.toDotFile(graph, "output_" + graphFileName, graphType, circuit, totalLength, null);
                     } else if ("Semi-Eulerian".equals(graphType)) {
                         System.out.println("Computing Eulerian Trail...");
                         Node startNode = chinesePostman.getLowestIdNode(chinesePostman.getOddDegreeNodes());
                         circuit = chinesePostman.computeEulerianTrail(startNode);
-                        totalLength = computeTotalLength(graph, circuit);
-                        DotReaderWriter.toDotFile(graph, "output_" + graphFileName, graphType, circuit, totalLength, extraCost);
-
-                    } else {
-                        // Non-Eulerian: Need to choose the matching algorithm
+                        totalLength = computeTotalLength( circuit);
+                        DotReaderWriter.toDotFile(graph, "output_" + graphFileName, graphType, circuit, totalLength, null);
+                    }
+                 else {
+                        // Non-Eulerian: Handle Chinese Postman Problem
                         System.out.println("Non-Eulerian Graph detected.");
                         System.out.println("Choose the minimal-length pairwise matching algorithm:");
                         System.out.println("1. Enumeration");
@@ -187,6 +180,13 @@ public class MainMenu {
                         System.out.println("Applying Chinese Postman solution with " + matchingAlgorithm + " algorithm...");
                         chinesePostman.computeChinesePostmanSolution(matchingAlgorithm);
                         // The DOT file is written inside computeChinesePostmanSolution
+                        return; // Exit after Non-Eulerian processing
+                    }
+
+                    // Display Results for Eulerian and Semi-Eulerian
+                    if ("Eulerian".equals(graphType) || "Semi-Eulerian".equals(graphType)) {
+                        System.out.println("\nComputed Circuit/Trail: " + circuit);
+                        System.out.println("Total length: " + totalLength);
                     }
 
                     System.out.println("\nOperation completed successfully!");
@@ -204,32 +204,21 @@ public class MainMenu {
 
     /**
      * A helper method to compute the total length of a given circuit.
+     * This method assumes that the circuit list contains edge descriptions in the format "from-(weight)-to".
+     *
+     * @param circuit The list of edge descriptions.
+     * @return The total length of the circuit.
      */
-    private static int computeTotalLength(UndirectedGraph graph, List<String> circuit) {
+    private static int computeTotalLength(List<String> circuit) {
         int totalLength = 0;
 
         for (String edgeDescription : circuit) {
             String[] parts = edgeDescription.split("-\\(|\\)-");
             if (parts.length < 3) continue;
 
-            int fromId = Integer.parseInt(parts[0]);
-            int toId = Integer.parseInt(parts[2]);
+            int weight = Integer.parseInt(parts[1]);
 
-            Node fromNode = graph.getNode(fromId);
-            Node toNode = graph.getNode(toId);
-
-            if (fromNode != null && toNode != null) {
-                // Find the edge between the nodes
-                Edge edge = graph.getAllEdges().stream()
-                        .filter(e -> (e.from().equals(fromNode) && e.to().equals(toNode)) ||
-                                (e.from().equals(toNode) && e.to().equals(fromNode)))
-                        .findFirst()
-                        .orElse(null);
-
-                if (edge != null) {
-                    totalLength += edge.getWeight();
-                }
-            }
+            totalLength += weight;
         }
 
         return totalLength;
